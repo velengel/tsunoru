@@ -387,7 +387,8 @@ fieldset[aria-invalid="true"] {
   border: 1px solid transparent;
   border-radius: 0.55rem;
   font-size: 0.82rem;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 .candidate-calendar-day:hover {
@@ -2435,6 +2436,22 @@ button:disabled {
 @media (max-width: 520px) {
   .app-shell {
     padding: 1rem;
+  }
+
+  .candidate-fieldset {
+    padding: 0.75rem;
+  }
+
+  .candidate-calendar {
+    padding: 0.5rem;
+  }
+
+  .candidate-calendar-grid {
+    gap: 0.125rem;
+  }
+
+  .candidate-calendar-day {
+    padding-inline: 0;
   }
 
   .candidate-editor,

@@ -313,3 +313,10 @@
 - 意味：iCloud Driveなど、macOS File Providerがlocal placeholder、download、uploadを管理するfilesystem領域。
 - 使われ方：File Provider内のrepositoryではKeep Downloadedとpreflightを要求する。正本とlinked worktreeの作成先には使わない。
 - 参考リンク：[Apple: iCloud Driveのfileとfolderを操作する](https://support.apple.com/guide/mac-help/work-with-folders-and-files-in-icloud-drive-mchl1a02d711/mac)、[ADR 0024](ADR/0024-require-local-git-materialization-before-worktree-creation.md)
+
+## 配信asset整合性
+
+- 同義語：`asset provenance`。検証codeと技術文書でだけ使う。
+- 意味：browserが同じbuildから生成されたHTML、Wasm、stylesheetを取得し、sourceと対応する状態。
+- 使われ方：live HTMLが参照するhash付きstylesheetの内容と固有selectorを確認してから、computed layoutとscreenshotをvisual evidenceとして採用する。
+- 参考リンク：[Story 0015](story/0015-repair-and-prove-the-served-calendar-layout.md)、[ADR 0021](ADR/0021-isolate-served-assets-before-visual-verification.md)、[Dioxus 0.7: Assets](https://dioxuslabs.com/learn/0.7/essentials/ui/assets/)

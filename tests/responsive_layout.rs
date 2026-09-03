@@ -362,8 +362,20 @@ fn inline_calendar_and_post_answer_matrix_stay_inside_the_phone_viewport() {
     assert!(
         day.contains("min-width: 0")
             && day.contains("min-height: 44px")
-            && day.contains("overflow-wrap: anywhere"),
-        "each calendar day must remain a shrinkable touch and keyboard target"
+            && day.contains("overflow-wrap: normal")
+            && day.contains("white-space: nowrap"),
+        "each calendar day must remain a touch target without splitting its numeric label"
+    );
+    let narrow = CSS
+        .split_once("@media (max-width: 520px)")
+        .map(|(_, rest)| rest)
+        .expect("the stylesheet should define the existing phone breakpoint");
+    assert!(
+        rule_body_in(narrow, ".candidate-fieldset").contains("padding: 0.75rem")
+            && rule_body_in(narrow, ".candidate-calendar").contains("padding: 0.5rem")
+            && rule_body_in(narrow, ".candidate-calendar-grid").contains("gap: 0.125rem")
+            && rule_body_in(narrow, ".candidate-calendar-day").contains("padding-inline: 0"),
+        "the 320px calendar must reclaim inner space before shrinking its seven date targets"
     );
     assert!(
         CSS.contains(".candidate-calendar-day[aria-pressed=\"true\"]")
