@@ -1,0 +1,15 @@
+[application]
+
+[web.app]
+title = "TSUNORU"
+
+[web.resource]
+style = []
+script = []
+
+[web.resource.dev]
+script = []
+
+[web.watcher]
+watch_path = ["src", "assets", "migrations", "Cargo.toml", "Dioxus.toml", "index.html"]
+index_on_404 = true

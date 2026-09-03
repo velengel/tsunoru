@@ -1,0 +1,42 @@
+# Rust dependencies and generated output
+/target/
+**/*.rs.bk
+
+# Local SQLite data
+/var/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Local output from superseded or ad hoc frontend tooling
+/node_modules/
+/dist/
+/package.json
+/package-lock.json
+/vite.config.ts
+/src/App.test.tsx
+/src/test/setup.ts
+
+# Local editor and operating-system files
+.DS_Store
+*.swp
+*.swo
+.codex-log/
+.mydocs/
+/.codex/worktree/
+
+# Local logs
+*.log
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets/
