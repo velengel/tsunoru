@@ -509,3 +509,12 @@ GitHubでdefault branchがmainになり、remote HEADがroot commit`351bddffddd8
 `git fsck --unreachable --no-reflogs`で他の到達不能objectがないことを確認し、対象blobをpruneした。
 公開前scanはcommitとremoteへの混入を防ぐが、local object storeまで消すものではない。
 秘密情報や公開しない個人情報を一度stageした場合は、到達可能履歴とは別にunreachable objectも確認する必要がある。
+
+## WAL modeのDB本体だけではreadonly openできない場合がある
+
+停止中のSQLiteはWALが0 byteだったため、DB本体だけを新配置へ複製した。
+DB checksumは一致したが、SQLite CLIの`-readonly` openは、WALとSHMがない状態でexit code 14になった。
+
+`immutable=1`のreadonly URIではintegrity checkが`ok`だった。
+書込可能な通常openも`ok`となり、0 byteのWALと32 KiBのSHMを再生成したが、DB本体のchecksumは変わらなかった。
+WAL modeのlocal stateをDB本体だけで復元するときは、破損と判断する前にreadonly接続方式と一時file再生成を分けて確認する必要がある。
