@@ -33,6 +33,10 @@ root commit前に次を確認した。
 - `.env`、key file、credential file、SQLite、`target/`、`var/`、`.mydocs/`はtracked fileに含まれなかった。
 - `scripts/test-public-snapshot-boundary.zsh`はStory IDとADR IDの一意性、worktree ignore、local state非追跡をPASSした。
 
+新しい正本の最終`git fsck --full`では、commit前に個人absolute pathを除いた際の中間reportが、到達不能blobとして一件だけ見つかった。
+`git fsck --unreachable --no-reflogs`で対象が一件だけであることと内容を確認し、`git prune --expire=now`で削除した。
+prune後の`git fsck --full`は出力なしでPASSした。このblobはcommitへ到達せず、remoteへpushされていない。
+
 GitHubの`velengel/tsunoru`は`PUBLIC`で、default branchは`main`である。
 `git ls-remote --heads origin main`は`351bddffddd873d9b95ef55d7a7cad17b86fe8b8`を返した。
 
@@ -103,6 +107,7 @@ trusted project sectionは旧iCloud pathから`$HOME/Developer/active/tsunoru`�
 - Git local state: `PASS`
 - public GitHub mainとfeature branch: `PASS`
 - fresh cloneのtest、Clippy、format、web build: `PASS`
+- fresh cloneのGit object整合性と到達不能object不在: `PASS`
 - local SQLiteとquizの複製: `PASS`
 - repository内worktreeの作成と関連test: `PASS`
 - カレンダーfeatureの実ブラウザー操作: `UNVERIFIED`。Story 0015で継続する。
