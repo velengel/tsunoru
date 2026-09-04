@@ -10,8 +10,8 @@ TSUNORUの正本を、File Provider管理外の`$HOME/Developer/active/tsunoru`�
 public mainは履歴なしroot commit`351bddffddd873d9b95ef55d7a7cad17b86fe8b8`から始まる。
 未完了のカレンダー修正は、mainへ混ぜず`fix/calendar-layout-verification`の`f459e4786598d60fc33d749c3b370acc2a7de6a3`として保持した。
 
-旧iCloud repositoryと既存worktreeは削除していない。
-旧配置へ戻すrollback経路は、利用者が別途削除を承認するまで残る。
+別途承認を得た後、旧iCloud repositoryと元のworktreeを削除した。
+sourceの復元元はpublic GitHubとcanonical cloneであり、SQLiteとquizにはFile Provider外の削除前backupも残した。
 
 ## 公開履歴とsource境界
 
@@ -106,6 +106,34 @@ Story 0015で残る配信assetと実ブラウザーの検証は、完了扱い�
 `$HOME/.codex/config.toml.pre-tsunoru-migration-20260904`へ設定backupを作った。
 trusted project sectionは旧iCloud pathから`$HOME/Developer/active/tsunoru`へ置き換えた。
 
+## 旧source削除
+
+削除前に旧rootと4件のlinked worktreeを再調査した。
+cleanだったADR簡潔化worktreeのStoryとADRは、新mainの番号へ置き換えた正規化diffが一致した。
+detached worktreeのHEADは旧mainの祖先で、固有commitは0件だった。
+公開snapshot worktreeのtree IDは、新しいroot commitと同じ`01bc701bccf78a2714e2f7b89ac9d6ade47e202a`だった。
+
+旧rootのカレンダー変更5fileと新feature worktreeは、fileごとのSHA-256が一致した。
+dirtyだった実体化ゲートworktreeでは、ADRと検証報告の正規化diffが一致し、3本のscriptもfileごとのSHA-256が一致した。
+Storyは新mainで`blocked`から`complete`へ進み、commit済みになっていた。
+
+canonical SQLite、quiz、dirty worktreeの変更fileを次へ保全した。
+
+```text
+$HOME/Developer/.migration/local-state/tsunoru/20260904-pre-source-deletion
+```
+
+backupは12fileである。
+SQLiteとquizのSHA-256はcanonical copyと一致し、backup SQLiteは`immutable=1`の`PRAGMA integrity_check`で`ok`を返した。
+
+cleanな3worktreeを通常の`git worktree remove`で解除した後、回収とbackupを確認したdirty worktreeを`--force`で解除した。
+旧rootを最初に削除した際は、削除中に作られた`.DS_Store`が5file、44 KiBだけ残った。
+processと残存fileを再調査し、source、Git履歴、利用者dataが残っていないことを確認してから、同じ旧rootを再度削除した。
+
+削除後、旧pathは存在しない。
+canonical mainとカレンダーworktreeはcleanで、`git fsck --full`は出力なしだった。
+GitHub repositoryは`PUBLIC`、default branchは`main`のままである。
+
 ## 証拠境界
 
 - Git local state: `PASS`
@@ -117,12 +145,12 @@ trusted project sectionは旧iCloud pathから`$HOME/Developer/active/tsunoru`�
 - カレンダーfeatureの実ブラウザー操作: `UNVERIFIED`。Story 0015で継続する。
 - external deployment: `NOT APPLICABLE`。この移行では変更していない。
 - physical device: `NOT APPLICABLE`。
-- 旧iCloud source削除: `NOT DONE`。別の明示承認を待つ。
+- 旧iCloud source削除: `PASS`。別途承認後に旧rootと元worktreeを削除し、path不在を確認した。
 
 ## rollback
 
-新しい正本の利用に問題があれば、旧iCloud repositoryと既存worktreeへ戻れる。
-新GitHub repository、staging repository、新しい正本、local state copyは、原因を確認するまで削除しない。
+旧iCloud repositoryと元worktreeは削除済みであり、そこへ戻すrollbackはできない。
+sourceはGitHubのmainとfeature branch、またはcanonical cloneから復元する。
 
-旧sourceを削除した後は、GitHubのmainとfeature branchがsourceの復元元になる。
-SQLiteとquizはGitHubに含まれないため、旧source削除の前に新配置のlocal copyを別途保全するか、消失を受け入れる判断が必要になる。
+SQLiteとquizはGitHubに含まれない。
+canonical copyに問題があれば、`$HOME/Developer/.migration/local-state/tsunoru/20260904-pre-source-deletion`のchecksum一致backupを使う。

@@ -518,3 +518,14 @@ DB checksumは一致したが、SQLite CLIの`-readonly` openは、WALとSHMが�
 `immutable=1`のreadonly URIではintegrity checkが`ok`だった。
 書込可能な通常openも`ok`となり、0 byteのWALと32 KiBのSHMを再生成したが、DB本体のchecksumは変わらなかった。
 WAL modeのlocal stateをDB本体だけで復元するときは、破損と判断する前にreadonly接続方式と一時file再生成を分けて確認する必要がある。
+
+## 削除中にもsystem metadataは作られる
+
+旧iCloud rootの`rm -rf`は約29 GiBを削除した後、空にしたはずの複数directoryを`Directory not empty`として残した。
+残っていたのは、削除開始後の時刻を持つ`.DS_Store`が5file、44 KiBだけだった。
+
+process一覧と`lsof`にはCargo、Dioxus、Gitによる旧pathへの書込みがなかった。
+どのmacOS componentが作ったかは特定できないため、FinderまたはFile Providerのどちらかへ原因を限定していない。
+
+一回目の削除失敗だけを再実行の根拠にせず、残存fileとprocessを読み直した。
+source、Git履歴、利用者dataが残っていないことを確認した後、同じrootを削除してpath不在を確認した。
