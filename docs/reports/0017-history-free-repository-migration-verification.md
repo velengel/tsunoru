@@ -80,6 +80,10 @@ c09241930cfe39b5e23d9ab310dbf211c356166ee42c66b42837538013dc8cb3
 
 fresh cloneの`git status --ignored`では、`.mydocs/`と`var/`だけがignored local stateとして現れた。
 
+新配置へDB本体だけを複製した直後、WAL modeで必要なWALとSHMがまだないため、SQLite CLIの`-readonly` openはexit code 14になった。
+`immutable=1`のreadonly URIでは`integrity_check`が`ok`を返した。
+書込可能な通常openでも`integrity_check`は`ok`で、0 byteのWALと32 KiBのSHMが再生成され、DB本体のSHA-256は変わらなかった。
+
 ## File Providerとworktree
 
 新しい正本には`com.apple.file-provider-domain-id`属性がなかった。
