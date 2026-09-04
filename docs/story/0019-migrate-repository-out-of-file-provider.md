@@ -1,6 +1,6 @@
 # Story 0019: TSUNORUをFile Provider外へ移す
 
-Status: in progress
+Status: complete
 
 Date: 2026-09-03
 
@@ -42,13 +42,13 @@ public remoteには既存履歴をpushせず、必要な現行treeからGitHub n
 - [x] Understanding Gateを`Passed`にする。
 - [x] ADR簡潔化とworktree停止予防策を公開用main treeへ統合する。
 - [x] StoryとADRの番号競合を解消する。
-- [ ] main snapshotのtest、build、差分、credential patternを検証する。
-- [ ] noreply emailのroot commitを作り、空のpublic GitHub repositoryへpushする。
-- [ ] fresh cloneを作り、local SQLiteとquizをGit管理外で復元する。
-- [ ] 未完了のカレンダー修正branchとrepository内worktreeを復元する。
-- [ ] Codex設定をbackupし、trusted project pathを切り替える。
-- [ ] manifest、検証記録、Surprise & Discoveryを更新する。
-- [ ] 旧iCloud repositoryを保持したまま、新配置を正本として利用できることを確認する。
+- [x] main snapshotのtest、build、差分、credential patternを検証する。
+- [x] noreply emailのroot commitを作り、空のpublic GitHub repositoryへpushする。
+- [x] fresh cloneを作り、local SQLiteとquizをGit管理外で復元する。
+- [x] 未完了のカレンダー修正branchとrepository内worktreeを復元する。
+- [x] Codex設定をbackupし、trusted project pathを切り替える。
+- [x] manifest、検証記録、Surprise & Discoveryを更新する。
+- [x] 旧iCloud repositoryを保持したまま、新配置を正本として利用できることを確認する。
 
 ## concern
 

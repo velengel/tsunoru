@@ -476,3 +476,27 @@ GUI調査は開始前のwindow ID、target、bounds、情報・詳細panelを記
 
 今回のqueueには別repositoryの`.codex/worktree`、Git object、source fileが大量に並び、約49分間`needs-sync-up`のままだった。
 共通Git directoryをローカルに保つだけでなく、linked worktreeの作成先もFile Provider domain外へ出す必要がある。
+
+## 履歴なしsnapshotはtreeの同一性をhashで証明できる
+
+既存履歴を捨てる移行では、file copyだけを見ると、公開treeが元の検証済みtreeと同じか判断しにくい。
+今回、`git archive`でtracked fileだけを展開し、root commit前の`git write-tree`と移行元commitのtree objectを比較したところ、両方が`01bc701bccf78a2714e2f7b89ac9d6ade47e202a`で一致した。
+
+commit履歴を引き継がなくても、file内容、path、実行bitを含むtree objectは照合できる。
+履歴なし移行では、公開前のsecret scanとtree hash比較を別の証拠として残す必要がある。
+
+## 空repositoryへの最初のmain pushは通常のPR gateを通せない
+
+公開用repositoryにはdefault branchがなく、PRのbaseにできるbranchもなかった。
+一方、Codexの実行環境はmainへの直接pushを実行前に拒否したため、利用者が検証済みstaging repositoryから最初の一回だけpushした。
+
+GitHubでdefault branchがmainになり、remote HEADがroot commit`351bddffddd873d9b95ef55d7a7cad17b86fe8b8`と一致することを再確認した。
+空repositoryの初期化だけは、通常のfeature branchとPRによる更新とは別の移行境界になる。
+
+## remote commitから作るlocal branchは追跡設定を別に確認する
+
+`create-feature-worktree.zsh`へremote branchをstart pointとして渡すと、branchとworktreeは期待したcommitで作られたが、upstreamは自動設定されなかった。
+作成後のbranch、HEAD、clean status、lock不在だけでは、次回push先まで決まった証拠にならない。
+
+移行後に`git branch --set-upstream-to`を実行し、`git branch -vv`で同名remote branchの追跡を確認した。
+既存remote branchをrepository内worktreeへ復元するときは、upstreamを独立した検証項目にする。
