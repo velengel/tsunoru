@@ -500,3 +500,12 @@ GitHubでdefault branchがmainになり、remote HEADがroot commit`351bddffddd8
 
 移行後に`git branch --set-upstream-to`を実行し、`git branch -vv`で同名remote branchの追跡を確認した。
 既存remote branchをrepository内worktreeへ復元するときは、upstreamを独立した検証項目にする。
+
+## commitしなかったstage内容もlocal Git objectに残る
+
+移行reportを最初にstageした後、個人absolute pathを`$HOME`表記へ直して再stageした。
+最終fileと公開commitには個人absolute pathがなかったが、最初にstageした内容は到達不能blobとして新しい正本のobject storeに残っていた。
+
+`git fsck --unreachable --no-reflogs`で他の到達不能objectがないことを確認し、対象blobをpruneした。
+公開前scanはcommitとremoteへの混入を防ぐが、local object storeまで消すものではない。
+秘密情報や公開しない個人情報を一度stageした場合は、到達可能履歴とは別にunreachable objectも確認する必要がある。
