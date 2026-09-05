@@ -560,3 +560,11 @@ PR #6's ready flag triggered a Codex review that completed after the initial del
 The review identified ADR 0021 as a newly introduced record with several independent decisions; its lower number had been mistaken for an accepted-history exemption.
 The fix separates those decisions, and AGENTS.md now requires explicit final-head review completion and disposition of every finding before a PR-ready claim.
 See [Story 0022](../story/0022-converge-codex-pr-review.md) and [ADR 0030](../ADR/0030-require-codex-review-convergence-for-pr-ready.md).
+
+
+## Verifier signal ownership must include Playwright
+
+The second Codex review exposed a termination path missing from the browser verifier.
+A signal delivered to Node alone did not complete cleanup; Playwright also installs signal handlers by default.
+Explicit verifier handlers now own SIGINT/SIGTERM and call the same idempotent cleanup as normal exit, with tests checking child-process and temporary-data removal.
+See [the review dispositions](0019-calendar-browser-verification.md#termination-signal-follow-up).

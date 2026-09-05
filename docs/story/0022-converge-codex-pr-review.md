@@ -25,3 +25,8 @@ Its older number does not make it an accepted main-branch historical record.
 A GitHub ready flag triggers review; it is not proof that asynchronous review has finished.
 Reviewing only an old commit or treating silence as approval can miss new comments.
 Rejected suggestions need a reason; comments should not be applied mechanically.
+
+## Follow-up finding
+
+Codex discussion_r3939426271 identifies leaked child processes and disposable data when the browser verifier receives SIGINT or SIGTERM.
+Change required: reproduce both termination paths, then route signals through shared idempotent cleanup and review the resulting head.

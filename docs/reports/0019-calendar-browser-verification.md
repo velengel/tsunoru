@@ -70,6 +70,15 @@ Local runtime evidence above remains valid; external-review convergence is now s
 | --- | --- | --- |
 | [discussion_r3939384154](https://github.com/velengel/tsunoru/pull/6#discussion_r3939384154), ADR 0021 mixes independent decisions | Change required | ADR 0021 is first introduced to main by this PR, so its older number is not an accepted-history exemption. Limit it to build-output isolation; move date-label policy to ADR 0028 and served-browser evidence to ADR 0029. Refer to existing ADR 0019 for native-button semantics and ADR 0027 for browser-runner/data isolation. |
 
-This correction changes documentation and instructions only; the verified application and test scripts are unchanged.
+The ADR correction changed documentation and instructions only. A subsequent review also required the verifier signal-handling correction below; application code remains unchanged.
 Document structure, relative links, ID uniqueness, staged diff and secret checks are run for this correction.
 The final-head Codex review must complete before another PR-ready claim; elapsed time or absence of new comments is not a substitute.
+
+### Termination-signal follow-up
+
+[discussion_r3939426271](https://github.com/velengel/tsunoru/pull/6#discussion_r3939426271) requires a change: normal `finally` cleanup does not handle direct SIGINT/SIGTERM termination reliably.
+The pre-fix shutdown probe failed because SIGTERM did not complete cleanup within 15 seconds; its test reclaimed its own remaining processes and directory.
+The verifier now owns SIGINT/SIGTERM handling, shares idempotent cleanup with normal exit, and waits for any in-flight Chromium launch before closing it.
+Playwright's own signal handling is disabled for these two signals so the verifier controls its full resource lifetime.
+`test-calendar-browser-shutdown.mjs` checks both signals, including the absence of the owned server, Chromium descendants and temporary directory.
+The normal both-width flow and stale-CSS check are rerun after this change. SIGKILL and machine failure cannot be cleaned up by an in-process handler.

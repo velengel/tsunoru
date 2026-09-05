@@ -30,7 +30,33 @@ const child = spawn(join(bundle, 'server'), [], { cwd: temp, env: { ...env, IP: 
 let launchError;
 child.on('error', (error) => { launchError = error; });
 let browser;
+let browserLaunch;
 let activePage;
+let stopping = false;
+let cleanupPromise;
+function cleanup() {
+  return cleanupPromise ??= (async () => {
+    try {
+      // A signal can arrive while Chromium is still launching.
+      const ownedBrowser = browser ?? await browserLaunch;
+      if (ownedBrowser) await ownedBrowser.close();
+    } finally {
+      if (child.exitCode === null && child.signalCode === null && child.pid) {
+        const stopped = once(child, 'exit');
+        child.kill('SIGTERM');
+        const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+        try { await stopped; } finally { clearTimeout(timer); }
+      }
+      await rm(temp, { recursive: true, force: true });
+    }
+  })();
+}
+for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
+  process.on(signal, () => {
+    stopping = true;
+    void cleanup().then(() => process.exit(code), () => process.exit(1));
+  });
+}
 const measurements = [];
 try {
   let ready = false;
@@ -43,7 +69,13 @@ try {
   }
   assert(ready, 'Owned server should become ready');
   console.log(execFileSync('sh', [join(root, 'scripts/verify_served_calendar_assets.sh'), origin], { encoding: 'utf8', timeout: 30000 }).trim());
-  browser = await chromium.launch({ headless: true });
+  if (stopping) await new Promise(() => {});
+  browser = await (browserLaunch = chromium.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false }));
+  if (stopping) await new Promise(() => {});
+  if (process.argv.includes('--shutdown-probe')) {
+    console.log('shutdown_probe_ready=' + JSON.stringify({ serverPid: child.pid, temp, origin }));
+    await new Promise(() => {});
+  }
   for (const width of [320, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
     const page = await context.newPage();
@@ -152,22 +184,13 @@ try {
   }
   console.log('calendar_browser_verification=PASS');
 } catch (error) {
-  if (activePage && !activePage.isClosed()) {
-    await activePage.screenshot({ path: join(evidence, 'failure.png'), fullPage: true });
-    console.log('Visible alerts:', await activePage.locator('[role=alert], .form-error, .field-error').allTextContents());
-  }
-  throw error;
-} finally {
-  try {
-    if (browser) await browser.close();
-  } finally {
-    if (child.exitCode === null && child.signalCode === null && child.pid) {
-      const stopped = once(child, 'exit');
-      child.kill('SIGTERM');
-      const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
-      await stopped;
-      clearTimeout(timer);
+  if (!stopping) {
+    if (activePage && !activePage.isClosed()) {
+      await activePage.screenshot({ path: join(evidence, 'failure.png'), fullPage: true });
+      console.log('Visible alerts:', await activePage.locator('[role=alert], .form-error, .field-error').allTextContents());
     }
-    await rm(temp, { recursive: true, force: true });
+    throw error;
   }
+} finally {
+  await cleanup();
 }
