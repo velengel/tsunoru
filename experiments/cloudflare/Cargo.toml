@@ -1,0 +1,21 @@
+[package]
+name = "tsunoru-cloudflare-probe"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+argon2 = { version = "=0.6.0", default-features = false, features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
+chrono-tz = "=0.10.4"
+
+[features]
+default = ["server"]
+server = []
+
+[profile.release]
+opt-level = 3
+lto = true

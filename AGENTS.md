@@ -37,6 +37,8 @@ Report all actionable findings discovered in the current pass together. Group du
 
 ## Git and secrets
 
+- When the user reports a merge, synchronize main and audit old worktrees/local branches. Remove confirmed merged, clean, unused worktrees with non-forced Git commands after preserving relevant ignored evidence. Keep dirty, unmerged or uncertain work and ask the user; do not delete remote branches automatically (ADR 0047).
+
 - On macOS, run `zsh scripts/verify-local-git-materialization.zsh` before `git status`, whole-repository inspection, or worktree creation. If it reports `dataless_files_present`, stop Git operations and use Finder's **Keep Downloaded** on the repository folder.
 - Create linked worktrees through `zsh scripts/create-feature-worktree.zsh <feature-branch> <absolute-worktree-path> [start-point]`; choose a destination outside iCloud Drive and every File Provider domain, and do not overlap direct `git worktree add` commands across sessions. When the canonical repository is outside a File Provider domain, prefer its ignored `.codex/worktree/<slug>` directory.
 - A command runner session ID means the child process is still running. Poll that session until an exit code is returned. Treat `locked initializing` as worktree creation in progress, and do not unlock, prune, remove, or retry while the creating Git process or file updates continue.

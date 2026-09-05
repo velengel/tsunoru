@@ -1,5 +1,19 @@
 # レビュー判断履歴
 
+## PR #8 小実験のローカルレビュー
+
+2026-09-05。[PR #8](https://github.com/velengel/tsunoru/pull/8)。既存R018/R019/R023とコードを照合し、以下を一括判断した。
+GitHubレビューコメントではなく、実験実装のローカル判断である。hosted指摘は確認時0件。
+
+| ID | 判断 | 理由と証拠 |
+| --- | --- | --- |
+| R025 | 修正 | domain共有時にserver featureを外すと未知timezoneを受け入れる。featureを有効化し、workerdで未知zone拒否を検証した |
+| R026 | 修正 | raw Wasm/D1試験をFullstack認証の成功と誤読しないよう、JS入口、合成schema/session、32-bit fingerprint、未検証のCookie/PHC/CPU課金を明記した |
+| R027 | 今回採用しない | Dioxus依存のforkや全面TypeScript化は小実験の目的を超える。serverの実ビルド失敗とbrowser PASSを残して別判断にする |
+
+実行結果、修正ファイル、再現方法は[結果](reports/0023-cloudflare-runtime-spike.md)と[HTTP検証](../experiments/cloudflare/verify.mjs)を参照。
+修正と証拠のcommit: [8ae4fd8](https://github.com/velengel/tsunoru/commit/8ae4fd8)。検証後push済み。GitHub上の対応対象コメントはないため返信は行っていない。
+
 ## PR #7 公開計画の敵対的検証1往復
 
 2026-09-05。[PR #7](https://github.com/velengel/tsunoru/pull/7)の初版[ dcae200 ](https://github.com/velengel/tsunoru/commit/dcae200)を対象に、原目的から過剰実装と公開事故の両方を検討した。
@@ -207,3 +221,11 @@ The user subsequently stopped this loop and set a two-round limit. [ADR 0043](AD
 今後は受信済みの全指摘を集めてから判断し、共通原因をまとめ、関連する箇所のローカルレビューと修正を収束させて一度の再レビューへ進みます。
 返信は各スレッドに行いますが、再レビューは返信ごとに起動しません。
 運用の根拠は[ADR 0034](ADR/0034-record-review-judgments-in-repository.md)、[ADR 0035](ADR/0035-reply-to-addressed-review-comments.md)、[ADR 0036](ADR/0036-batch-review-follow-up.md)です。
+
+## R028-R030: Rust Worker vertical slice (2026-09-06)
+
+- R028（セキュリティ）: **要対応（次段階）**。最小 Worker は公開 API に必要な認証・capability 検証を持たないため、ローカル検証に限定した。
+- R029（エラー契約）: **保留**。D1 の重複・保存エラーは次段階の認証・匿名回答 API とまとめて設計する。
+- R030（スコープ）: **変更不要**。イベント作成までの縦切りは ADR 0049 の段階的移行方針に一致する。
+
+実装・検証: [c2145ae](https://github.com/velengel/tsunoru/commit/c2145ae)。

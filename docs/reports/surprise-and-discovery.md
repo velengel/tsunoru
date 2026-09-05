@@ -661,3 +661,9 @@ An owned fixture child survived Harness.stop after its parent exited. Cleanup no
 - 主催権限はlocalStorageにあるため、DB移転だけではoriginや端末を越えて引き継がれない。account履歴も主催権限の代わりにならない。
 - backup復元は失効済みsessionや削除を巻き戻し得る。復元後の失効と削除再適用を公開条件へ追加した。
 - 一次資料とコードの根拠、採用しない案、検証1往復の結果は[公開計画](0021-publication-plan.md)と[判断ログ](../review-judge-logs.md)を正とする。
+## 2026-09-05 Cloudflare小実験
+
+Dioxus 0.7.10の最小server構成もmioのWasm非対応で失敗した一方、browser構成はcheckが通った。
+既存domainをWasmで使う場合はserver featureを維持しないとtimezone検証が弱くなる。
+D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した。
+根拠と限界は[小実験結果](0023-cloudflare-runtime-spike.md)を正とする。

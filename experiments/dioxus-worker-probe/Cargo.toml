@@ -1,0 +1,8 @@
+[package]
+name = "dioxus-worker-probe"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+dioxus = { version = "=0.7.10", default-features = false, features = ["fullstack", "server", "lib"] }
