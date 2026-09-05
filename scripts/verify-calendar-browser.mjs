@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createIdentityDatabase, checkDatabaseIdentity } from './verification-database.mjs';
+import { createIdentityDatabase, checkDatabaseIdentity, verifiedMutation } from './verification-database.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = process.env.PLAYWRIGHT_MODULE;
@@ -178,8 +178,17 @@ try {
     await context.route('**/*', async (route) => {
       try {
         assertOwnedServer();
-        if (!['GET', 'HEAD'].includes(route.request().method())) await verifyIdentity();
-        await route.continue();
+        const request = route.request();
+        if (!['GET', 'HEAD'].includes(request.method())) {
+          const response = await verifiedMutation(origin, databaseIdentity, {
+            path: request.url(), method: request.method(), headers: await request.allHeaders(),
+            body: request.postDataBuffer() ?? Buffer.alloc(0),
+          });
+          assertOwnedServer();
+          await route.fulfill(response);
+        } else {
+          await route.continue();
+        }
       } catch {
         await route.abort('failed').catch(() => {});
       }

@@ -643,3 +643,7 @@ Terminating the outer regression driver bypassed Python's default cleanup even t
 ## Some cleanup risks disappear when the resource is unnecessary
 
 The real shell asset checker still had a mktemp-to-trap gap that a stalled replacement fixture could not reveal. Its HTML and CSS only need comparison, so they now stay in memory. Removing those temporary files closes the interruption gap without another layer of ownership and signal handling.
+
+## A connection object may silently become a different connection
+
+A valid identity response did not prevent later writes to a replacement listener. Even one Python HTTPConnection object could reconnect automatically. Both verification clients now bind identity and mutation to a single physical connection and refuse reconnection; deterministic handover tests show zero replacement writes after the fix.

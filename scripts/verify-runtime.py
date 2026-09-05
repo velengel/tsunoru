@@ -23,6 +23,8 @@ import urllib.error
 import urllib.request
 import uuid
 
+from verification_connection import BoundHTTPConnection
+
 
 ROOT = Path(__file__).resolve().parents[1]
 BINARY = ROOT / "target/dx/tsunoru/debug/web/server"
@@ -100,19 +102,25 @@ def verify(defer_termination):
                 with defer_termination():
                     child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
                                              stdout=log, stderr=subprocess.STDOUT)
-                def raw_request(path, data=None, method=None, expected=200):
+                def raw_request(path, data=None, method=None, expected=200, connection=None):
                     if child.poll() is not None:
                         raise RuntimeError("owned server exited; refusing HTTP requests")
                     body = None if data is None else json.dumps(data).encode()
                     req = urllib.request.Request(base + path, data=body, method=method,
                                                  headers={"Content-Type": "application/json", "Origin": base})
-                    try:
-                        with opener.open(req, timeout=10) as response:
+                    if connection is not None:
+                        connection.request(req.get_method(), path, body=body, headers=dict(req.header_items()))
+                        with connection.getresponse() as response:
                             status, raw = response.status, response.read()
                             content_type = response.headers.get("Content-Type", "")
-                    except urllib.error.HTTPError as error:
-                        status, raw = error.code, error.read()
-                        content_type = error.headers.get("Content-Type", "")
+                    else:
+                        try:
+                            with opener.open(req, timeout=10) as response:
+                                status, raw = response.status, response.read()
+                                content_type = response.headers.get("Content-Type", "")
+                        except urllib.error.HTTPError as error:
+                            status, raw = error.code, error.read()
+                            content_type = error.headers.get("Content-Type", "")
                     if child.poll() is not None:
                         raise RuntimeError("owned server exited during HTTP request")
                     if status != expected:
@@ -120,15 +128,17 @@ def verify(defer_termination):
                     print(f"PASS {method or ('POST' if body else 'GET')} {path} HTTP {expected}", flush=True)
                     return json.loads(raw) if "json" in content_type else raw
 
-                def verify_identity():
-                    event = raw_request("/api/events/get", {"public_id": identity_id}, method="GET")
+                def verify_identity(connection=None):
+                    event = raw_request("/api/events/get", {"public_id": identity_id}, method="GET", connection=connection)
                     if not isinstance(event, dict) or event.get("public_id") != identity_id or event.get("name") != identity_name:
                         raise RuntimeError("owned database identity mismatch; refusing test writes")
 
                 def request(path, data=None, method=None, expected=200):
                     effective_method = method or ("POST" if data is not None else "GET")
                     if effective_method not in ("GET", "HEAD"):
-                        verify_identity()
+                        with closing(BoundHTTPConnection("127.0.0.1", port, timeout=10)) as connection:
+                            verify_identity(connection)
+                            return raw_request(path, data, method, expected, connection)
                     return raw_request(path, data, method, expected)
 
                 deadline = time.monotonic() + 20

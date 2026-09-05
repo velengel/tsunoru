@@ -196,6 +196,7 @@ After `dx build --web`, run the repository-owned browser verifier with an instal
 Playwright 1.62.0 and its Chromium 151 build were used for the recorded verification.
 The fixture database uses the built-in `node:sqlite` module; Node 25.9.0 was used for these checks.
 The verifier seeds a private database marker and confirms it through a read-only API before permitting test writes.
+Each mutation uses the same TCP connection as its identity check, with automatic reconnection disabled; a replaced listener cannot receive that mutation.
 The served-asset checker uses Python 3 to inspect responses in memory, without temporary files.
 
 ```sh
@@ -209,6 +210,8 @@ python3 scripts/test-runtime-server-identity.py
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-browser-server-identity.py
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-harness-termination.py
 python3 scripts/test-calendar-assets.py
+node scripts/test-verification-connection.mjs
+python3 scripts/test-verification-connection.py
 ```
 
 The runner starts this worktree's built server on its own loopback port with a disposable database and fresh browser profile.

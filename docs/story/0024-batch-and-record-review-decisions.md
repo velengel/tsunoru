@@ -52,3 +52,12 @@ Review 3939819165 identifies a shell mktemp/assignment/trap gap that the stalled
 - [x] Remove temporary files and subprocesses from the checker implementation.
 - [x] Verify both signals, valid/stale CSS, wrong content type, missing HTML markers, the normal browser flow, stale-CSS browser control and fourteen browser shutdown cases.
 - Commit and reply evidence is retained in R014; final-head review remains a live PR-ready condition.
+
+## Mutation connection affinity batch
+
+Review 3939865260 identifies a check-to-use gap in both HTTP and browser verification: the port can be rebound after identity verification but before a mutation. Reproduce a listener handover after a valid identity response, bind that response and mutation to one non-reconnecting TCP connection, and validate both clients and the complete browser/HTTP flows before one review.
+
+- [x] Reproduce writes to a replacement listener with separate requests and ordinary reconnecting HTTPConnection behavior.
+- [x] Bind each mutation to its verified connection in both clients and reject reconnect attempts.
+- [x] Verify zero replacement writes, same-socket success, response/cookie preservation, wrong identity, complete browser and HTTP flows, source preservation and thirty inner/outer interruption cases.
+- Record the pushed fix and completion reply in R015, then check the final-head review live.

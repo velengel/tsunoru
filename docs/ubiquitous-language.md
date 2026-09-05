@@ -348,3 +348,10 @@
 - 使われ方：隔離DBへ直接入れ、HTTPによるテスト書き込みを始める前に一致を確認する。元DBには挿入しない。
 - 避けられないシステム上の同義語：検証スクリプトの `database identity`。
 - 参考リンク：[ADR 0038](ADR/0038-confirm-verifier-database-identity-before-http-writes.md)
+
+## 検証通信の接続固定
+
+- 意味：DBの目印確認と一回の書き込みを同じTCP接続に束ね、切断時の再接続を禁止すること。
+- 使われ方：検証用HTTPクライアントとブラウザー操作の書き込みに適用し、ポートを引き継いだ別プロセスへの送信を防ぐ。
+- 避けられないシステム上の同義語：専用のsystem用語はない。実装では `BoundHTTPConnection` と `BoundAgent` を使う。
+- 参考リンク：[ADR 0041](ADR/0041-bind-verification-writes-to-one-connection.md)

@@ -6,6 +6,7 @@ import sys
 
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
 spec = importlib.util.spec_from_file_location("runtime_verifier", ROOT / "scripts/verify-runtime.py")
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
