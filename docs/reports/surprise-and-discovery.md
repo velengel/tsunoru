@@ -589,3 +589,9 @@ Cleanup is installed first and can await pending resource acquisition before rem
 The expanded startup cleanup still left a synchronous asset check that could block Node's event loop during a stall.
 The checker is now an owned asynchronous process group, and the signal regression includes a deliberately stalled checker.
 Cleanup waits for both browser and checker cleanup even if one reports a failure.
+
+## Review guidance and review triggers have different configuration locations
+
+Official Codex documentation explicitly supports a Code Review Rules section in applicable AGENTS.md files, while hosted automatic-review toggles are managed in Codex settings.
+The existing development workflow therefore needed a concise review-specific section, not a new configuration format.
+See [the source-backed configuration record](0020-codex-review-configuration.md).

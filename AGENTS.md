@@ -21,6 +21,14 @@
 - GitHub's ready flag can trigger review; it is not the user-facing completion criterion. Require an explicit completed Codex review for the final head, no pending necessary fixes, successful required checks, and a mergeable PR before delivering the PR-ready link.
 - If Codex review is unavailable or still running, report the pending boundary instead of declaring PR ready. Do not infer approval from silence or an older head's review.
 
+## Code Review Rules
+
+These checks summarize existing TSUNORU boundaries; see [review setup and sources](docs/reports/0020-codex-review-configuration.md) and [ADR 0033](docs/ADR/0033-keep-code-review-rules-in-root-agents.md).
+
+- Flag changes that expose organizer or response capabilities, session secrets, or private projections through public responses or logs, or authorize protected mutations using names or public event IDs alone. Safe path: preserve server-side capability/session checks; anonymous participation and the intended shared event/answer views remain supported.
+- Flag regressions that prevent selecting and reading candidate dates or completing an anonymous availability response at 320px or by keyboard. Safe path: keep native operable controls and visible selection/focus state; horizontal scrolling inside the answer matrix is intentional, while page-wide overflow and wrapped date digits are not.
+- For verification tools, flag writes to the user's source database, termination of unrelated servers, or owned child processes and disposable data left behind on failure or SIGINT/SIGTERM. Safe path: use isolated writable fixtures, read-only source snapshots where required, and cleanup scoped to resources created by that invocation; retained diagnostic evidence is intentional.
+
 ## Git and secrets
 
 - On macOS, run `zsh scripts/verify-local-git-materialization.zsh` before `git status`, whole-repository inspection, or worktree creation. If it reports `dataless_files_present`, stop Git operations and use Finder's **Keep Downloaded** on the repository folder.

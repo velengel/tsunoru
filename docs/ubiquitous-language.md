@@ -327,3 +327,10 @@
 - Usage: deliver the PR link only with that completed evidence; a pending external review remains pending work.
 - System synonym: GitHub calls its draft transition "Ready for review", but that flag alone is not this completion state.
 - Reference: [ADR 0030](ADR/0030-require-codex-review-convergence-for-pr-ready.md), [Story 0022](story/0022-converge-codex-pr-review.md).
+
+## Code Review Rules
+
+- 意味：CodexがPRの変更をレビューするときに参照する、リポジトリ固有の確認観点。
+- 使われ方：ルートの `AGENTS.md` に問題となる振る舞いと許容される経路を記載する。自動レビューの起動設定はCodexの設定画面で管理する。
+- 避けられないシステム上の同義語：公式の見出し名 `Code Review Rules` を使う。
+- 参考リンク：[OpenAIのレビュー設定](https://learn.chatgpt.com/docs/third-party/github#customize-what-codex-reviews)、[ADR 0033](ADR/0033-keep-code-review-rules-in-root-agents.md)
