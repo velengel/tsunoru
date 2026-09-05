@@ -334,3 +334,17 @@
 - 使われ方：ルートの `AGENTS.md` に問題となる振る舞いと許容される経路を記載する。自動レビューの起動設定はCodexの設定画面で管理する。
 - 避けられないシステム上の同義語：公式の見出し名 `Code Review Rules` を使う。
 - 参考リンク：[OpenAIのレビュー設定](https://learn.chatgpt.com/docs/third-party/github#customize-what-codex-reviews)、[ADR 0033](ADR/0033-keep-code-review-rules-in-root-agents.md)
+
+## レビュー判断履歴
+
+- 意味：レビュー指摘ごとの対応要否、理由、検証、関連リンクを残す記録。
+- 使われ方：`docs/review-judge-logs.md` をローカルコードレビューで参照し、再判断は以前の経緯を残して追記する。
+- 避けられないシステム上の同義語：専用のsystem用語はない。ファイル名は `review-judge-logs.md` を使う。
+- 参考リンク：[ADR 0034](ADR/0034-record-review-judgments-in-repository.md)
+
+## 検証用DBの目印
+
+- 意味：検証先が自分の使い捨てDBであることを、読み取りAPIで照合する毎回異なるイベントIDと名前。
+- 使われ方：隔離DBへ直接入れ、HTTPによるテスト書き込みを始める前に一致を確認する。元DBには挿入しない。
+- 避けられないシステム上の同義語：検証スクリプトの `database identity`。
+- 参考リンク：[ADR 0038](ADR/0038-confirm-verifier-database-identity-before-http-writes.md)

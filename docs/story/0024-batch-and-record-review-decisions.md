@@ -8,19 +8,20 @@ The latest completed review adds two isolation findings to assess together.
 
 ## definition of done
 
-- [ ] Record every PR #6 finding, disposition, reason, verification and commit link in the judgment log.
-- [ ] Make local review consult the log while still evaluating current evidence.
-- [ ] Reply to addressed review comments with verified pushed commit links.
-- [ ] Record and apply a batch review workflow.
-- [ ] Fix and verify both new isolation findings and inspect related paths before one new review.
+- [x] Record every PR #6 finding, disposition, reason, verification and commit link in the judgment log.
+- [x] Make local review consult the log while still evaluating current evidence.
+- [x] Reply to addressed review comments with verified pushed commit links.
+- [x] Record and apply a batch review workflow.
+- [x] Fix and verify both new isolation findings and inspect related paths before one new review.
 - Final-head Codex review completion and unresolved findings are checked live on PR #6.
 
 ## to do
 
-- [ ] Record separate decisions for the judgment log, completion replies and batch workflow.
-- [ ] Backfill previous findings and replies; retain later reassessments as history.
-- [ ] Add negative isolation tests before implementation and inspect both verifiers.
-- [ ] Converge self-review, push the complete batch, then request one review of that head.
+- [x] Record separate decisions for the judgment log, completion replies and batch workflow.
+- [x] Backfill previous findings and replies; retain later reassessments as history.
+- [x] Add negative isolation tests before implementation and inspect both verifiers.
+- [x] Converge local self-review and verify the full isolation batch.
+- Push the completed documentation batch and request one final-head review; keep its live completion state on PR #6.
 
 ## concern
 

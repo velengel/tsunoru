@@ -40,3 +40,11 @@ Self-review confirmed rule scope and safe exceptions against the references abov
 Required Story/ADR sections, unique document IDs, relative links and diff whitespace checks passed.
 Model compliance cannot be proven by a text-matching test; final-head review completion and any findings are checked live on PR #6 under [Story 0022](../story/0022-converge-codex-pr-review.md).
 A completed review with no findings does not prove that every rule was exercised.
+
+## Local review and grouped follow-up
+
+The user's follow-up adds [the judgment log](../review-judge-logs.md) as a local-review reference.
+AGENTS.md requires evidence-backed judgments, commit-linked completion replies and one follow-up review after a batch of related fixes and local checks.
+The review instructions ask Codex to report all actionable findings discovered in its pass together and group duplicate causes without dropping independent findings.
+This can reduce avoidable serial requests; it cannot guarantee exhaustive model findings in one pass.
+See [ADR 0034](../ADR/0034-record-review-judgments-in-repository.md), [ADR 0035](../ADR/0035-reply-to-addressed-review-comments.md) and [ADR 0036](../ADR/0036-batch-review-follow-up.md).

@@ -20,10 +20,15 @@
 - Apply necessary fixes, verify them, push, and repeat review inspection for the new head until findings converge. Resolve addressed threads only after the fixes are verified and pushed; record evidence-backed reasons for no-change decisions.
 - GitHub's ready flag can trigger review; it is not the user-facing completion criterion. Require an explicit completed Codex review for the final head, no pending necessary fixes, successful required checks, and a mergeable PR before delivering the PR-ready link.
 - If Codex review is unavailable or still running, report the pending boundary instead of declaring PR ready. Do not infer approval from silence or an older head's review.
+- Before local code review, consult relevant entries in [docs/review-judge-logs.md](docs/review-judge-logs.md), then assess the current code and evidence. Append reassessments rather than treating past dispositions as permanent exclusions (ADR 0034).
+- Record every PR finding's judgment, rationale, evidence, commit and comment links in that log. After verification and push, reply to each addressed comment with a concise completion note and commit link, then resolve its thread; check for existing replies first (ADR 0035).
+- Treat a completed review as a batch: collect all findings, group shared causes, inspect related files and failure paths locally, and converge fixes and verification before requesting one review of the resulting head. Replies do not each trigger another review (ADR 0036).
 
 ## Code Review Rules
 
 These checks summarize existing TSUNORU boundaries; see [review setup and sources](docs/reports/0020-codex-review-configuration.md) and [ADR 0033](docs/ADR/0033-keep-code-review-rules-in-root-agents.md).
+
+Report all actionable findings discovered in the current pass together. Group duplicate symptoms of the same cause, preserve independent findings, and consult prior judgments without suppressing new evidence.
 
 - Flag changes that expose organizer or response capabilities, session secrets, or private projections through public responses or logs, or authorize protected mutations using names or public event IDs alone. Safe path: preserve server-side capability/session checks; anonymous participation and the intended shared event/answer views remain supported.
 - Flag regressions that prevent selecting and reading candidate dates or completing an anonymous availability response at 320px or by keyboard. Safe path: keep native operable controls and visible selection/focus state; horizontal scrolling inside the answer matrix is intentional, while page-wide overflow and wrapped date digits are not.

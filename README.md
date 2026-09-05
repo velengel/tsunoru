@@ -183,6 +183,10 @@ Finderを開く調査では、操作前に既存windowと情報・詳細panelを
 実装より先に `docs/story/` のStoryと、必要な `docs/ADR/` の意思決定を更新する。
 受け入れテストを先に失敗させ、最小の実装で通し、回帰検証を終えてからコミットする。
 
+ローカルコードレビューでは [レビュー判断履歴](docs/review-judge-logs.md) を読み、現在の差分と照合する。
+受信した全指摘と関連する箇所をまとめて確認し、修正と検証を収束させてから一度の再レビューへ進む。
+対応したPRコメントには、push済みの修正コミットと検証結果を添えて返信する。
+
 コミットは一つの作業区切りに絞り、subjectを `<prefix>: <summary>`、bodyを `why` と `what` で構成する。
 token、API key、password、private key、実値入りの環境ファイルはコミットしない。
 
@@ -190,6 +194,8 @@ token、API key、password、private key、実値入りの環境ファイルは�
 
 After `dx build --web`, run the repository-owned browser verifier with an installed Playwright module.
 Playwright 1.62.0 and its Chromium 151 build were used for the recorded verification.
+The fixture database uses the built-in `node:sqlite` module; Node 25.9.0 was used for these checks.
+The verifier seeds a private database marker and confirms it through a read-only API before permitting test writes.
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs
@@ -197,11 +203,16 @@ PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-bro
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
 PATH="$PWD/scripts/fixtures/portable-process-tools:$PATH" PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
 python3 scripts/test-runtime-shutdown.py
+python3 scripts/test-runtime-source-snapshot.py
+python3 scripts/test-runtime-server-identity.py
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-browser-server-identity.py
 ```
 
 The runner starts this worktree's built server on its own loopback port with a disposable database and fresh browser profile.
 It checks the linked stylesheet against the bundled file, 320px and 1440px geometry, keyboard controls, and event creation through the post-answer matrix.
 The negative fixture checks that an HTTP 200 response containing old CSS is rejected.
+The HTTP verifier reads source DB/WAL/SHM files as bytes and performs SQL inspection only on a disposable snapshot.
+The source must be quiescent: changing file sets fail verification instead of being treated as a valid online backup.
 Screenshots and measurements are saved under ignored `var/browser-evidence/`; test data and owned processes are removed on exit.
 Each concurrently running build must use a different worktree or target directory, not just a different port.
 
