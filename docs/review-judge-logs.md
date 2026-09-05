@@ -1,5 +1,20 @@
 # レビュー判断履歴
 
+## R034-R039: Codex review for PR #9 (2026-09-06)
+
+- R034（候補日モデル）: **修正**。候補日テーブルと候補日単位の回答キーを追加した。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003984
+- R035（availability enum）: **修正**。Worker検証とD1 CHECK制約を追加した。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003988
+- R036（表示名の主キー）: **修正**。表示名を識別子にせず、response_id と候補日を冪等キーにした。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003989
+- R037（capability平文）: **修正**。SHA-256を保存・照合に使う。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003992
+- R038（既存schema migration）: **保留**。専用staging新規D1が前提で、既存DB移行は別Issueに切り出す。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003994
+- R039（Story同期）: **修正**。実装・ADR完了項目のチェックを更新した。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003995
+
+## R031-R033: staging event API (2026-09-06)
+
+- R031（認証）: **要対応（次段階）**。capability照合は追加したが、Cookie session、失効、Origin/CSRFは未実装。本番公開せず、Story 0028 の次作業へ切り出す。
+- R032（入力・D1）: **修正済み**。イベント作成と匿名回答の必須値をWorker側で検証し、分離schemaに外部キーと複合主キーを追加した。検証は `cloud/rust-worker/verify-local.mjs`。
+- R033（スコープ）: **変更不要**。本番resourceやUI接続を同時に扱わず、staging APIの縦切りに限定した。
+
 ## PR #8 小実験のローカルレビュー
 
 2026-09-05。[PR #8](https://github.com/velengel/tsunoru/pull/8)。既存R018/R019/R023とコードを照合し、以下を一括判断した。

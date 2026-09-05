@@ -1,1 +1,3 @@
-CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, name TEXT NOT NULL, organizer_capability TEXT NOT NULL, response_capability TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS candidates (event_id TEXT NOT NULL REFERENCES events(id), id TEXT NOT NULL, label TEXT NOT NULL, PRIMARY KEY(event_id, id));
+CREATE TABLE IF NOT EXISTS answers (event_id TEXT NOT NULL REFERENCES events(id), response_id TEXT NOT NULL, candidate_id TEXT NOT NULL, availability TEXT NOT NULL CHECK(availability IN ('available','maybe','unavailable')), PRIMARY KEY(event_id, response_id, candidate_id), FOREIGN KEY(event_id, candidate_id) REFERENCES candidates(event_id, id));
