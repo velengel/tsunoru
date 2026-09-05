@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/wrangler@4.117.0/config-schema.json",
+  "name": "tsunoru-cloudflare-spike",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-06",
+  "assets": { "directory": "../../dist" },
+  "rules": [{ "type": "CompiledWasm", "globs": ["**/*.wasm"] }],
+  "d1_databases": [{ "binding": "DB", "database_name": "tsunoru-spike", "database_id": "<create-separate-spike-database>" }]
+}

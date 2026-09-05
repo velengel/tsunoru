@@ -1,0 +1,14 @@
+{
+  "name": "tsunoru-cloud-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:wasm": "cargo build --manifest-path ../core/Cargo.toml --target wasm32-unknown-unknown --release"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260728.1",
+    "typescript": "^5.8.0",
+    "wrangler": "^4.117.0"
+  }
+}
