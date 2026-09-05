@@ -11,7 +11,9 @@ import json
 import os
 from pathlib import Path
 import secrets
+import signal
 import socket
+import sys
 import sqlite3
 import subprocess
 import tempfile
@@ -54,9 +56,10 @@ def verify():
         env.update(IP="127.0.0.1", PORT=str(port))
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with (directory / "server.log").open("w") as log:
-            child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
-                                     stdout=log, stderr=subprocess.STDOUT)
+            child = None
             try:
+                child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
+                                         stdout=log, stderr=subprocess.STDOUT)
                 def request(path, data=None, method=None, expected=200):
                     if child.poll() is not None:
                         raise RuntimeError("owned server exited; refusing HTTP requests")
@@ -84,6 +87,11 @@ def verify():
                         if time.monotonic() >= deadline:
                             raise RuntimeError("owned server did not become ready") from None
                         time.sleep(0.2)
+
+                if "--shutdown-probe" in sys.argv:
+                    print("shutdown_probe_ready=" + json.dumps({"server_pid": child.pid, "temp": str(directory)}), flush=True)
+                    while True:
+                        time.sleep(1)
 
                 def get_event(public_id):
                     # Dioxus 0.7.10's generated JSON extractor reads a body, including GET.
@@ -124,19 +132,35 @@ def verify():
                 check(b"BEGIN:VCALENDAR" in calendar and b"BEGIN:VEVENT" in calendar, "calendar download contains event")
                 post("/api/answers/submit", {**answer, "response_capability": secrets.token_hex(32)}, 409)
             finally:
-                if child.poll() is None:
-                    child.terminate()
-                    try:
-                        child.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        child.kill()
-                        child.wait()
-                check(child.poll() is not None, "owned server stopped")
+                if child is not None:
+                    if child.poll() is None:
+                        child.terminate()
+                        try:
+                            child.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait()
+                    check(child.poll() is not None, "owned server stopped")
                 with sqlite3.connect(f"file:{SOURCE}?mode=ro", uri=True) as source:
                     check(list(source.iterdump()) == original_dump, "original database logical contents unchanged")
                 check(hashlib.sha256(SOURCE.read_bytes()).digest() == original_hash, "original database file unchanged")
     print("runtime_verification=PASS", flush=True)
 
 
+def main():
+    def terminate(signum, _frame):
+        # Let the existing finally and TemporaryDirectory context unwind once.
+        for termination_signal in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(termination_signal, signal.SIG_IGN)
+        raise SystemExit(128 + signum)
+
+    previous = {sig: signal.signal(sig, terminate) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        verify()
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
 if __name__ == "__main__":
-    verify()
+    main()

@@ -568,3 +568,10 @@ The second Codex review exposed a termination path missing from the browser veri
 A signal delivered to Node alone did not complete cleanup; Playwright also installs signal handlers by default.
 Explicit verifier handlers now own SIGINT/SIGTERM and call the same idempotent cleanup as normal exit, with tests checking child-process and temporary-data removal.
 See [the review dispositions](0019-calendar-browser-verification.md#termination-signal-follow-up).
+
+
+## Review convergence extends across sibling verifiers
+
+After the browser verifier's signal cleanup was fixed, Codex found the equivalent Python verifier gap.
+A dedicated fixture reproduced the live server left behind by direct SIGTERM, and both signal paths now unwind Python's existing cleanup.
+A cross-check of sibling verification tools is useful when a lifecycle defect is found in one tool.

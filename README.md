@@ -195,6 +195,7 @@ Playwright 1.62.0 and its Chromium 151 build were used for the recorded verifica
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs --stale-css
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
+python3 scripts/test-runtime-shutdown.py
 ```
 
 The runner starts this worktree's built server on its own loopback port with a disposable database and fresh browser profile.

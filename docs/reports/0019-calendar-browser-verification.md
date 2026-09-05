@@ -82,3 +82,13 @@ The verifier now owns SIGINT/SIGTERM handling, shares idempotent cleanup with no
 Playwright's own signal handling is disabled for these two signals so the verifier controls its full resource lifetime.
 `test-calendar-browser-shutdown.mjs` checks both signals, including the absence of the owned server, Chromium descendants and temporary directory.
 The normal both-width flow and stale-CSS check are rerun after this change. SIGKILL and machine failure cannot be cleaned up by an in-process handler.
+
+### Additional workflow and Python-verifier findings
+
+- [discussion_r3939444599](https://github.com/velengel/tsunoru/pull/6#discussion_r3939444599): change required. Worktree reuse and opening an early draft are independent user-requested operating policies. ADR 0031 and ADR 0032 now adopt them separately; AGENTS.md references both.
+- [discussion_r3939444603](https://github.com/velengel/tsunoru/pull/6#discussion_r3939444603): change required. The Python verifier had the same direct-SIGTERM gap. Its new regression reproduced `SIGTERM: server leaked` before implementation.
+
+The Python verifier now turns SIGTERM/SIGINT into an exit that unwinds its existing server cleanup and TemporaryDirectory context, and ignores repeated termination signals during cleanup.
+The signal regression uses a fresh database initialized by the built server and checks server removal, temporary-data removal and signal-specific exit status for both signals.
+It also runs the normal HTTP lifecycle and confirms unchanged source-fixture contents and hash. All three paths passed.
+No application Rust or CSS changed during these comment corrections.

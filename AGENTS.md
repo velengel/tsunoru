@@ -14,8 +14,8 @@
 
 ## PR ready workflow
 
-- Continue in an existing suitable feature worktree; create a new one only when needed, and explain the reason.
-- Open a development draft PR before implementation, then record the plan, implement, and converge self-review and fixes.
+- Continue in an existing suitable feature worktree; create a new one only when needed, and explain the reason (ADR 0031).
+- Open a development draft PR before implementation, then record the plan, implement, and converge self-review and fixes (ADR 0032).
 - Inspect Codex review summaries, reviews, and inline threads for the final PR head. For every finding, record whether a change is needed and why.
 - Apply necessary fixes, verify them, push, and repeat review inspection for the new head until findings converge. Resolve addressed threads only after the fixes are verified and pushed; record evidence-backed reasons for no-change decisions.
 - GitHub's ready flag can trigger review; it is not the user-facing completion criterion. Require an explicit completed Codex review for the final head, no pending necessary fixes, successful required checks, and a mergeable PR before delivering the PR-ready link.

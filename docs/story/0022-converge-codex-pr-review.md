@@ -30,3 +30,8 @@ Rejected suggestions need a reason; comments should not be applied mechanically.
 
 Codex discussion_r3939426271 identifies leaked child processes and disposable data when the browser verifier receives SIGINT or SIGTERM.
 Change required: reproduce both termination paths, then route signals through shared idempotent cleanup and review the resulting head.
+
+## Third-review findings
+
+- discussion_r3939444599 requires separate ADRs for the user's worktree-reuse and early-draft policies; record ADR 0031 and ADR 0032 before retaining those enforcement rules.
+- discussion_r3939444603 identifies the same SIGTERM cleanup gap in the Python HTTP verifier; add a signal regression and unwind its existing cleanup on termination.
