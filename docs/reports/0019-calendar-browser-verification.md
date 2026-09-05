@@ -155,3 +155,26 @@ PATH="$PWD/scripts/fixtures/portable-process-tools:$PATH" PLAYWRIGHT_MODULE=/pat
 ```
 
 The normal 320px/1440px browser flow, syntax and diff checks passed after the notification change.
+
+## Batched database isolation follow-up
+
+The completed review of 4bd1676 reported [wrong-server writes](https://github.com/velengel/tsunoru/pull/6#discussion_r3939636006) and [source WAL side effects](https://github.com/velengel/tsunoru/pull/6#discussion_r3939636008).
+Both require changes because matching assets and mode=ro did not prove the intended data boundary.
+They were handled in one batch, including a local cross-check of both browser and HTTP verifiers before another external review.
+
+The wrong-database fixture deliberately runs the same real application bundle against another disposable database, without relying on a timing-sensitive port race.
+Before the fixes, browser verification wrote two events to that database and HTTP verification wrote one.
+After the fixes, both reject its identity before writing any events.
+Each verifier seeds an unpredictable marker directly in its own disposable database, reads it through the existing event API before test writes, and checks child liveness around traffic.
+The browser fixture applies current migration SQL and SQLx 0.8 metadata using node:sqlite; normal real-server verification validates the resulting checksums and schema.
+See [ADR 0038](../ADR/0038-confirm-verifier-database-identity-before-http-writes.md).
+
+The source snapshot fixture leaves a committed WAL without SHM, including an event that exists only in WAL.
+Before the fix, the source file set changed despite successful HTTP verification.
+After the fix, the WAL-only event remains readable through the copied database and the original main/WAL/SHM bytes and file presence remain unchanged.
+The verifier reads source files as bytes, checks repeated file sets, opens only the disposable snapshot with SQLite, and compares source files again after verification.
+This requires a quiescent source and is not an arbitrary live-backup guarantee; see [ADR 0037](../ADR/0037-inspect-source-database-through-byte-snapshots.md) and [SQLite WAL read-only behavior](https://www.sqlite.org/wal.html#read_only_databases).
+
+Batch verification passed: Node shutdown 14 cases under the portable-tool fixture, Python shutdown four cases plus normal HTTP lifecycle, both wrong-database tests, WAL snapshot preservation, 320px/1440px browser flow, stale-CSS negative control, syntax and public-snapshot boundary checks.
+Application Rust/CSS did not change in this batch; the previously recorded Rust tests, clippy, fmt and web build remain the application-code evidence.
+Self-review checked related failure phases in both verifiers, the source sidecars and WAL-only data, request deadlines, child-liveness guards, migration metadata, and the new documentation's scope.

@@ -613,3 +613,20 @@ The regression now observes both pre-publication and ready-state termination of 
 A macOS ps comm path and lsof lookup made the new launch regression depend on host-specific tools.
 The verifier now publishes its PID and disposable path directly, while numeric PID/PPID inspection is used only to check descendants.
 A fixed constrained-PATH fixture verifies that process-name and lsof queries are no longer required.
+
+## Matching assets do not identify the writable database
+
+A real TSUNORU server with the same bundle but another disposable database passed the old browser checks and received two event writes.
+The equivalent HTTP fixture received one, so the batch review extended the fix across both verifiers before another external review.
+Private database markers now establish the intended target before HTTP test mutations.
+
+## Read-only SQLite can still affect source sidecars
+
+A WAL fixture without SHM reproduced source-file changes during mode=ro inspection.
+SQL inspection now runs only against a byte-stable disposable snapshot, including committed WAL data, while the complete source file set is compared without a SQLite connection.
+
+## Review judgments can guide a broader local pass
+
+The user requested a dedicated judgment log and commit-linked completion replies.
+The current batch groups related isolation findings and cross-checks both verifiers, rather than triggering another review after each fix.
+The log retains earlier reasoning and links while allowing reassessment when current evidence changes.

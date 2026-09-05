@@ -6,7 +6,7 @@ Requires: dx build --web (or a completed dx serve --web build).
 Only the child server receives test writes. No credentials are printed or saved.
 """
 
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import hashlib
 import json
 import os
@@ -21,6 +21,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,19 +35,52 @@ def check(condition, message):
     print(f"PASS {message}", flush=True)
 
 
+def database_files(database):
+    result = {}
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        path = Path(str(database) + suffix)
+        try:
+            result[suffix] = path.read_bytes()
+        except FileNotFoundError:
+            if not suffix:
+                raise
+            result[suffix] = None
+    return result
+
+
+def snapshot_source(database, destination):
+    state = database_files(database)
+    if database_files(database) != state:
+        raise RuntimeError("source database changed during snapshot; retry when quiescent")
+    destination.parent.mkdir()
+    for suffix, contents in state.items():
+        # Rebuild WAL shared memory only within the disposable snapshot.
+        if contents is not None and suffix != "-shm":
+            Path(str(destination) + suffix).write_bytes(contents)
+    if database_files(database) != state:
+        raise RuntimeError("source database changed during snapshot; retry when quiescent")
+    return state
+
+
 def verify(defer_termination):
     check(BINARY.is_file(), "built server exists")
     check(SOURCE.is_file(), "original database exists")
-    original_hash = hashlib.sha256(SOURCE.read_bytes()).digest()
     with tempfile.TemporaryDirectory(prefix="runtime-check-", dir=ROOT / "var") as tmp:
         directory = Path(tmp)
         (directory / "var").mkdir()
-        with sqlite3.connect(f"file:{SOURCE}?mode=ro", uri=True) as source:
+        snapshot = directory / "source/tsunoru.sqlite3"
+        source_state = snapshot_source(SOURCE, snapshot)
+        with closing(sqlite3.connect(snapshot)) as source:
             check(source.execute("PRAGMA integrity_check").fetchone() == ("ok",), "source integrity")
-            original_dump = list(source.iterdump())
             public_ids = [r[0] for r in source.execute("SELECT public_id FROM events")]
-            with sqlite3.connect(directory / "var/tsunoru.sqlite3") as copy:
+            with closing(sqlite3.connect(directory / "var/tsunoru.sqlite3")) as copy:
                 source.backup(copy)
+        identity_id = str(uuid.uuid4())
+        identity_name = "Verification identity " + str(uuid.uuid4())
+        with closing(sqlite3.connect(directory / "var/tsunoru.sqlite3")) as copy:
+            copy.execute("INSERT INTO events (public_id, name, time_zone, organizer_capability_hash) VALUES (?, ?, ?, ?)",
+                         (identity_id, identity_name, "Asia/Tokyo", hashlib.sha256(secrets.token_bytes(32)).hexdigest()))
+            copy.commit()
         with socket.socket() as reservation:
             reservation.bind(("127.0.0.1", 0))
             port = reservation.getsockname()[1]
@@ -63,7 +97,7 @@ def verify(defer_termination):
                 with defer_termination():
                     child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
                                              stdout=log, stderr=subprocess.STDOUT)
-                def request(path, data=None, method=None, expected=200):
+                def raw_request(path, data=None, method=None, expected=200):
                     if child.poll() is not None:
                         raise RuntimeError("owned server exited; refusing HTTP requests")
                     body = None if data is None else json.dumps(data).encode()
@@ -76,10 +110,23 @@ def verify(defer_termination):
                     except urllib.error.HTTPError as error:
                         status, raw = error.code, error.read()
                         content_type = error.headers.get("Content-Type", "")
+                    if child.poll() is not None:
+                        raise RuntimeError("owned server exited during HTTP request")
                     if status != expected:
                         raise RuntimeError(f"{path}: expected HTTP {expected}, received HTTP {status}")
                     print(f"PASS {method or ('POST' if body else 'GET')} {path} HTTP {expected}", flush=True)
                     return json.loads(raw) if "json" in content_type else raw
+
+                def verify_identity():
+                    event = raw_request("/api/events/get", {"public_id": identity_id}, method="GET")
+                    if not isinstance(event, dict) or event.get("public_id") != identity_id or event.get("name") != identity_name:
+                        raise RuntimeError("owned database identity mismatch; refusing test writes")
+
+                def request(path, data=None, method=None, expected=200):
+                    effective_method = method or ("POST" if data is not None else "GET")
+                    if effective_method not in ("GET", "HEAD"):
+                        verify_identity()
+                    return raw_request(path, data, method, expected)
 
                 deadline = time.monotonic() + 20
                 while True:
@@ -91,6 +138,7 @@ def verify(defer_termination):
                             raise RuntimeError("owned server did not become ready") from None
                         time.sleep(0.2)
 
+                verify_identity()
                 if "--shutdown-probe" in sys.argv:
                     print("shutdown_probe_ready=" + json.dumps({"server_pid": child.pid, "temp": str(directory)}), flush=True)
                     while True:
@@ -144,9 +192,7 @@ def verify(defer_termination):
                             child.kill()
                             child.wait()
                     check(child.poll() is not None, "owned server stopped")
-                with sqlite3.connect(f"file:{SOURCE}?mode=ro", uri=True) as source:
-                    check(list(source.iterdump()) == original_dump, "original database logical contents unchanged")
-                check(hashlib.sha256(SOURCE.read_bytes()).digest() == original_hash, "original database file unchanged")
+                check(database_files(SOURCE) == source_state, "original database and sidecar files unchanged")
     print("runtime_verification=PASS", flush=True)
 
 

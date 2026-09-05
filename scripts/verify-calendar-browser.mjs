@@ -7,6 +7,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createIdentityDatabase, checkDatabaseIdentity } from './verification-database.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const modulePath = process.env.PLAYWRIGHT_MODULE;
@@ -18,10 +19,21 @@ const label = stale ? 'stale' : process.argv.includes('--baseline') ? 'baseline'
 const evidence = join(root, 'var/browser-evidence', label);
 let temp, tempCreation, socket, socketSetup, socketClosing, child, origin;
 let launchError, browser, browserLaunch, activePage;
+let databaseIdentity;
 let assetChild, assetDone, assetStopPromise;
 let assetFinished = false;
 let stopping = false;
 let cleanupPromise;
+function assertOwnedServer() {
+  if (launchError) throw launchError;
+  assert(child?.pid && child.exitCode === null && child.signalCode === null,
+    'Owned server exited; refusing test traffic');
+}
+async function verifyIdentity() {
+  assertOwnedServer();
+  await checkDatabaseIdentity(origin, databaseIdentity);
+  assertOwnedServer();
+}
 async function checkpoint() {
   if (stopping) await new Promise(() => {});
 }
@@ -106,6 +118,7 @@ try {
   await checkpoint();
   temp = await (tempCreation = mkdtemp(join(root, 'var/calendar-browser-')));
   await shutdownProbe('temp');
+  databaseIdentity = createIdentityDatabase(temp);
   socket = createServer();
   socketSetup = new Promise((done, fail) => {
     socket.once('error', fail);
@@ -120,6 +133,7 @@ try {
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DIOXUS_') && !k.startsWith('TSUNORU_')));
   child = spawn(join(bundle, 'server'), [], { cwd: temp, env: { ...env, IP: '127.0.0.1', PORT: String(port) }, stdio: 'ignore' });
   child.on('error', (error) => { launchError = error; });
+  child.once('exit', () => { if (browser) void browser.close().catch(() => {}); });
   await shutdownProbe('server');
   let ready = false;
   for (let i = 0; i < 100; i++) {
@@ -130,6 +144,7 @@ try {
     await new Promise((r) => setTimeout(r, 100));
   }
   assert(ready, 'Owned server should become ready');
+  await verifyIdentity();
   const checker = process.argv.includes('--shutdown-probe=asset')
     ? 'scripts/fixtures/stalled-calendar-assets.sh' : 'scripts/verify_served_calendar_assets.sh';
   assetChild = spawn('sh', [join(root, checker), origin], {
@@ -160,6 +175,15 @@ try {
   await shutdownProbe('browser');
   for (const width of [320, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
+    await context.route('**/*', async (route) => {
+      try {
+        assertOwnedServer();
+        if (!['GET', 'HEAD'].includes(route.request().method())) await verifyIdentity();
+        await route.continue();
+      } catch {
+        await route.abort('failed').catch(() => {});
+      }
+    });
     const page = await context.newPage();
     activePage = page;
     // A directly launched debug build has no hot-reload websocket; only application exceptions fail this check.
