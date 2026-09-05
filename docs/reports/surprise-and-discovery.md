@@ -529,3 +529,14 @@ process一覧と`lsof`にはCargo、Dioxus、Gitによる旧pathへの書込み�
 
 一回目の削除失敗だけを再実行の根拠にせず、残存fileとprocessを読み直した。
 source、Git履歴、利用者dataが残っていないことを確認した後、同じrootを削除してpath不在を確認した。
+
+## Post-migration runtime checks can own disposable data
+
+On 2026-09-05, automatic review rejected an ad-hoc temporary lifecycle script and recommended a repository-scoped script.
+The reviewed replacement, `scripts/verify-runtime.py`, owns a loopback server and a disposable SQLite backup, then checks the original SQL dump and database hash.
+It passed review and the full anonymous HTTP lifecycle without broadening global permissions.
+This session's approval does not establish a general allow rule.
+
+A plain query-string call to `get_public_event` returned a missing-field HTTP 500.
+The installed Dioxus 0.7.10 JSON extractor reads the argument body, including for GET; the matching request returned HTTP 200 for the migrated data.
+See [the runtime report](0018-post-migration-runtime-verification.md) and [ADR 0026](../ADR/0026-isolate-runtime-verification.md).
