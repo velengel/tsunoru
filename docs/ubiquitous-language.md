@@ -355,3 +355,8 @@
 - 使われ方：検証用HTTPクライアントとブラウザー操作の書き込みに適用し、ポートを引き継いだ別プロセスへの送信を防ぐ。
 - 避けられないシステム上の同義語：専用のsystem用語はない。実装では `BoundHTTPConnection` と `BoundAgent` を使う。
 - 参考リンク：[ADR 0041](ADR/0041-bind-verification-writes-to-one-connection.md)
+# 公開計画で使う運用用語
+
+- **限定公開**：共有先を知人等に絞る試用。認証された招待者だけのアクセス制御とは異なり、インターネットからの攻撃を想定する。system synonym: limited pilot。参照: [公開計画](reports/0021-publication-plan.md)。
+- **RPO**：障害時に失ってよいデータの時間幅。backup間隔の判断に使う。system synonym: Recovery Point Objective。参照: [公開計画](reports/0021-publication-plan.md)。
+- **RTO**：障害から復旧までの目標時間。復元演習の判定に使う。system synonym: Recovery Time Objective。参照: [公開計画](reports/0021-publication-plan.md)。
