@@ -92,3 +92,11 @@ The Python verifier now turns SIGTERM/SIGINT into an exit that unwinds its exist
 The signal regression uses a fresh database initialized by the built server and checks server removal, temporary-data removal and signal-specific exit status for both signals.
 It also runs the normal HTTP lifecycle and confirms unchanged source-fixture contents and hash. All three paths passed.
 No application Rust or CSS changed during these comment corrections.
+
+
+### Initialization-order finding
+
+[discussion_r3939464122](https://github.com/velengel/tsunoru/pull/6#discussion_r3939464122): change required. The first signal fix registered handlers after acquiring resources, leaving an early termination window.
+The new temporary-directory-stage test failed before the fix because that directory remained after SIGTERM.
+Handlers are now registered before acquisition; cleanup awaits an in-flight mkdtemp, socket setup or browser launch, and checkpoints prevent acquiring the next resource after shutdown starts.
+The signal regression covers temporary-directory creation, socket setup, server spawn and completed browser launch for both SIGTERM and SIGINT, including signal-specific exit codes and removal of owned processes/data.

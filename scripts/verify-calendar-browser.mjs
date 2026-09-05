@@ -16,38 +16,37 @@ const bundle = resolve(process.env.TSUNORU_TEST_BUNDLE || join(root, 'target/dx/
 const stale = process.argv.includes('--stale-css');
 const label = stale ? 'stale' : process.argv.includes('--baseline') ? 'baseline' : 'verified';
 const evidence = join(root, 'var/browser-evidence', label);
-await mkdir(evidence, { recursive: true });
-await rm(join(evidence, 'failure.png'), { force: true });
-const temp = await mkdtemp(join(root, 'var/calendar-browser-'));
-const socket = createServer();
-socket.listen(0, '127.0.0.1');
-await once(socket, 'listening');
-const port = socket.address().port;
-await new Promise((r) => socket.close(r));
-const origin = `http://127.0.0.1:${port}`;
-const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DIOXUS_') && !k.startsWith('TSUNORU_')));
-const child = spawn(join(bundle, 'server'), [], { cwd: temp, env: { ...env, IP: '127.0.0.1', PORT: String(port) }, stdio: 'ignore' });
-let launchError;
-child.on('error', (error) => { launchError = error; });
-let browser;
-let browserLaunch;
-let activePage;
+let temp, tempCreation, socket, socketSetup, socketClosing, child, origin;
+let launchError, browser, browserLaunch, activePage;
 let stopping = false;
 let cleanupPromise;
+async function checkpoint() {
+  if (stopping) await new Promise(() => {});
+}
+async function closeSocket() {
+  if (!socket) return;
+  await socketSetup.catch(() => {});
+  return socketClosing ??= new Promise((done) => socket.close(() => done()));
+}
 function cleanup() {
   return cleanupPromise ??= (async () => {
     try {
-      // A signal can arrive while Chromium is still launching.
       const ownedBrowser = browser ?? await browserLaunch;
       if (ownedBrowser) await ownedBrowser.close();
     } finally {
-      if (child.exitCode === null && child.signalCode === null && child.pid) {
-        const stopped = once(child, 'exit');
-        child.kill('SIGTERM');
-        const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
-        try { await stopped; } finally { clearTimeout(timer); }
+      try {
+        if (child && child.exitCode === null && child.signalCode === null && child.pid) {
+          const stopped = once(child, 'exit');
+          child.kill('SIGTERM');
+          const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+          try { await stopped; } finally { clearTimeout(timer); }
+        }
+      } finally {
+        await closeSocket();
+        // Account for a signal while mkdtemp is still pending.
+        const directory = temp ?? await tempCreation;
+        if (directory) await rm(directory, { recursive: true, force: true });
       }
-      await rm(temp, { recursive: true, force: true });
     }
   })();
 }
@@ -57,8 +56,37 @@ for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
     void cleanup().then(() => process.exit(code), () => process.exit(1));
   });
 }
+async function shutdownProbe(stage) {
+  await checkpoint();
+  if (process.argv.includes(`--shutdown-probe=${stage}`)) {
+    console.log('shutdown_probe_ready=' + JSON.stringify({ serverPid: child?.pid ?? null, temp, origin }));
+    // Early startup phases need a live handle while the regression delivers its signal.
+    setInterval(() => {}, 1000);
+    await new Promise(() => {});
+  }
+}
 const measurements = [];
 try {
+  await mkdir(evidence, { recursive: true });
+  await rm(join(evidence, 'failure.png'), { force: true });
+  await checkpoint();
+  temp = await (tempCreation = mkdtemp(join(root, 'var/calendar-browser-')));
+  await shutdownProbe('temp');
+  socket = createServer();
+  socketSetup = new Promise((done, fail) => {
+    socket.once('error', fail);
+    socket.listen(0, '127.0.0.1', done);
+  });
+  await shutdownProbe('socket');
+  await socketSetup;
+  const port = socket.address().port;
+  await closeSocket();
+  await checkpoint();
+  origin = `http://127.0.0.1:${port}`;
+  const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('DIOXUS_') && !k.startsWith('TSUNORU_')));
+  child = spawn(join(bundle, 'server'), [], { cwd: temp, env: { ...env, IP: '127.0.0.1', PORT: String(port) }, stdio: 'ignore' });
+  child.on('error', (error) => { launchError = error; });
+  await shutdownProbe('server');
   let ready = false;
   for (let i = 0; i < 100; i++) {
     if (launchError) throw launchError;
@@ -69,13 +97,9 @@ try {
   }
   assert(ready, 'Owned server should become ready');
   console.log(execFileSync('sh', [join(root, 'scripts/verify_served_calendar_assets.sh'), origin], { encoding: 'utf8', timeout: 30000 }).trim());
-  if (stopping) await new Promise(() => {});
+  await checkpoint();
   browser = await (browserLaunch = chromium.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false }));
-  if (stopping) await new Promise(() => {});
-  if (process.argv.includes('--shutdown-probe')) {
-    console.log('shutdown_probe_ready=' + JSON.stringify({ serverPid: child.pid, temp, origin }));
-    await new Promise(() => {});
-  }
+  await shutdownProbe('browser');
   for (const width of [320, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });
     const page = await context.newPage();

@@ -575,3 +575,10 @@ See [the review dispositions](0019-calendar-browser-verification.md#termination-
 After the browser verifier's signal cleanup was fixed, Codex found the equivalent Python verifier gap.
 A dedicated fixture reproduced the live server left behind by direct SIGTERM, and both signal paths now unwind Python's existing cleanup.
 A cross-check of sibling verification tools is useful when a lifecycle defect is found in one tool.
+
+
+## Signal cleanup must cover resource acquisition
+
+A later review caught an earlier lifecycle gap: registering cleanup after initialization leaves startup resources unprotected.
+The expanded browser regression now stops the verifier at four acquisition phases with both termination signals.
+Cleanup is installed first and can await pending resource acquisition before removing it.

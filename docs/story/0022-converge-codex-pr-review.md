@@ -35,3 +35,11 @@ Change required: reproduce both termination paths, then route signals through sh
 
 - discussion_r3939444599 requires separate ADRs for the user's worktree-reuse and early-draft policies; record ADR 0031 and ADR 0032 before retaining those enforcement rules.
 - discussion_r3939444603 identifies the same SIGTERM cleanup gap in the Python HTTP verifier; add a signal regression and unwind its existing cleanup on termination.
+
+
+## Initialization-order follow-up
+
+Codex discussion_r3939464122 requires signal handlers before the first owned resource is acquired.
+The expanded regression reproduced a leftover temporary directory when SIGTERM arrived immediately after mkdtemp.
+The handler now precedes resource acquisition, and cleanup awaits pending acquisition before removing it.
+Test all four startup phases with SIGTERM and SIGINT, then rerun normal browser and stale-CSS checks before the next review.

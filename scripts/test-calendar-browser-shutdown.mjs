@@ -15,8 +15,8 @@ function descendants(parent) {
   found.delete(parent);
   return [...found];
 }
-for (const signal of ['SIGTERM', 'SIGINT']) {
-  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', '--shutdown-probe'], { cwd: root, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+for (const stage of ['temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
+  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], { cwd: root, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
   const exit = once(runner, 'exit');
   let info, pids = [];
   try {
@@ -32,14 +32,15 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
       runner.stderr.on('data', (data) => process.stderr.write(data));
     });
     pids = descendants(runner.pid);
-    assert(pids.includes(info.serverPid), 'Test identifies only the owned server tree');
+    if (info.serverPid) assert(pids.includes(info.serverPid), 'Test identifies only the owned server tree');
     runner.kill(signal);
     let timer;
-    await Promise.race([exit, new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('signal cleanup timed out')), 15000); })]).finally(() => clearTimeout(timer));
-    assert(!alive(info.serverPid), `${signal}: owned server must stop`);
+    const result = await Promise.race([exit, new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('signal cleanup timed out')), 15000); })]).finally(() => clearTimeout(timer));
+    assert.equal(result[0], signal === 'SIGINT' ? 130 : 143, 'Verifier exits only after signal cleanup');
+    if (info.serverPid) assert(!alive(info.serverPid), `${signal}: owned server must stop`);
     assert(pids.every((pid) => !alive(pid)), `${signal}: owned browser descendants must stop`);
     await assert.rejects(access(info.temp), { code: 'ENOENT' }, `${signal}: disposable database directory must be removed`);
-    console.log(`PASS ${signal}: server, Chromium tree and temporary data removed`);
+    console.log(`PASS ${stage} ${signal}: server, Chromium tree and temporary data removed`);
   } finally {
     // Also reclaim this test's owned resources when demonstrating the pre-fix failure.
     if (runner.exitCode === null && runner.signalCode === null) { runner.kill('SIGKILL'); await exit; }
