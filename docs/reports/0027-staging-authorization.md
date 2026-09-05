@@ -39,3 +39,9 @@
 ## worktree 整理
 
 main を #9 のマージ `492506e` に更新。取り込み済み・clean・非稼働の `cloudflare-event-api` worktree と `feat/cloudflare-event-api`、`spike/cloudflare-runtime` のローカル branch を非 force の Git 操作で削除した。ignored は再生成可能な build/target/cache のみ。未追跡文書のある `calendar-pr-ready` は保持した。新規 worktree はマージ済み作業と次 PR を分けるために作成した。
+
+## PR の確認
+
+実装は [7f2e6e0](https://github.com/velengel/tsunoru/commit/7f2e6e02d8ca323deda7a9d90766717d151620b8) として push 済み。初回 Codex review はこの head で完了し、summary・reviews・inline threads を照合して指摘0件だった。ローカルレビューは [R040–R044](../review-judge-logs.md) に記録した。必要な検査はローカルで実行しており、確認時の GitHub CI checks は0件。
+
+[PR #10](https://github.com/velengel/tsunoru/pull/10) の本文を実装・検証・未実施の配置範囲に合わせて更新し、GitHub から読み戻した。最終 head のレビュー完了は [Codex summary](https://github.com/velengel/tsunoru/pull/10#issuecomment-5553168882) の対象 commit と照合する。ready flag 単独を承認の根拠にしない。
