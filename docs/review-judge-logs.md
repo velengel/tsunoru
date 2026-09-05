@@ -166,6 +166,8 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## 今回からのまとめ方
 
+The user subsequently stopped this loop and set a two-round limit. [ADR 0043](ADR/0043-stop-review-follow-up-after-two-rounds.md) supersedes indefinite convergence: assess relevance and impact, record defer/no-change decisions where justified, and stop after two rounds with a merge-decision report. The current loop ends without another review request; an already running review is reported as pending rather than awaited indefinitely.
+
 今回のR010とR011は検証先の隔離という共通の観点で、一つの対応バッチにまとめます。
 過去のR002、R004からR009は、終了処理を資源取得前、取得途中、起動待ち、通常動作、失敗、終了の各段階で横断確認すれば早く見つけられた可能性があります。
 指摘を受けた箇所だけでなく、NodeとPythonの両方をこの観点で確認します。

@@ -25,6 +25,8 @@ The latest completed review adds two isolation findings to assess together.
 
 ## concern
 
+User stop instruction: end the current review loop and limit future autonomous follow-up to two rounds per PR. A round is one received review batch, triage, necessary fixes and verification. At the limit, report outstanding findings and merge status; do not start a third round or wait indefinitely for a clean review.
+
 A review prompt cannot guarantee that Codex discovers all defects in one pass.
 Previously rejected or fixed findings may need reassessment when new evidence appears.
 The log must not be used to suppress fresh findings or to misrepresent an old head's review as current.

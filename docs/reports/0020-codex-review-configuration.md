@@ -1,5 +1,7 @@
 # Codex review configuration
 
+Current stopping policy: [ADR 0043](../ADR/0043-stop-review-follow-up-after-two-rounds.md) limits autonomous follow-up to two rounds per PR. This overrides earlier unbounded convergence requirements in this report; pending review must be disclosed but does not justify continuing beyond the limit.
+
 Checked against official documentation on 2026-09-05.
 
 ## Repository configuration

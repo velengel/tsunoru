@@ -17,12 +17,13 @@
 - Continue in an existing suitable feature worktree; create a new one only when needed, and explain the reason (ADR 0031).
 - Open a development draft PR before implementation, then record the plan, implement, and converge self-review and fixes (ADR 0032).
 - Inspect Codex review summaries, reviews, and inline threads for the final PR head. For every finding, record whether a change is needed and why.
-- Apply necessary fixes, verify them, push, and repeat review inspection for the new head until findings converge. Resolve addressed threads only after the fixes are verified and pushed; record evidence-backed reasons for no-change decisions.
-- GitHub's ready flag can trigger review; it is not the user-facing completion criterion. Require an explicit completed Codex review for the final head, no pending necessary fixes, successful required checks, and a mergeable PR before delivering the PR-ready link.
-- If Codex review is unavailable or still running, report the pending boundary instead of declaring PR ready. Do not infer approval from silence or an older head's review.
+- Judge findings against the original goal, concrete impact, reproducibility and correction cost; a review comment does not automatically require a fix. Record fix, defer or no-change decisions with reasons.
+- Limit autonomous review follow-up to two rounds per PR (ADR 0043). One round is one received review batch, triage, necessary fixes and verification. New findings or commits do not reset the count. After two rounds, stop; do not request another review, wait indefinitely, or begin a third round without explicit user instruction. Report severe findings rather than silently overriding the limit.
+- Resolve addressed threads only after fixes are verified and pushed. At the stopping point, provide the PR link, mergeability, completed checks, review status and any outstanding findings so the user can decide whether to merge or continue.
+- GitHub's ready flag is not evidence of review approval. Distinguish final-head review completion, pending review and unreviewed changes; never infer approval from silence or an older head. Pending review does not override the two-round stopping rule.
 - Before local code review, consult relevant entries in [docs/review-judge-logs.md](docs/review-judge-logs.md), then assess the current code and evidence. Append reassessments rather than treating past dispositions as permanent exclusions (ADR 0034).
 - Record every PR finding's judgment, rationale, evidence, commit and comment links in that log. After verification and push, reply to each addressed comment with a concise completion note and commit link, then resolve its thread; check for existing replies first (ADR 0035).
-- Treat a completed review as a batch: collect all findings, group shared causes, inspect related files and failure paths locally, and converge fixes and verification before requesting one review of the resulting head. Replies do not each trigger another review (ADR 0036).
+- Within the two-round limit, treat a completed review as a batch: collect findings, group shared causes and inspect relevant failure paths before fixing and verifying. Request another review only when it fits the remaining round budget. Replies do not each trigger another review (ADR 0036, superseded in stopping behavior by ADR 0043).
 
 ## Code Review Rules
 

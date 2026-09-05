@@ -1,5 +1,9 @@
 # Surprise & Discovery
 
+## Batching needs a stopping condition
+
+Grouping related fixes did not prevent repeated review passes from expanding this PR. The user's correction sets a two-round limit and makes scope, demonstrated impact and remaining risk part of the merge decision. Review convergence is no longer an unbounded completion requirement; ADR 0043 is authoritative.
+
 Date: 2026-09-01
 
 ## Dioxus 0.7系の最新安定版
