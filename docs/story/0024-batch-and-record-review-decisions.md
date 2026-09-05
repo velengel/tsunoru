@@ -61,3 +61,13 @@ Review 3939865260 identifies a check-to-use gap in both HTTP and browser verific
 - [x] Bind each mutation to its verified connection in both clients and reject reconnect attempts.
 - [x] Verify zero replacement writes, same-socket success, response/cookie preservation, wrong identity, complete browser and HTTP flows, source preservation and thirty inner/outer interruption cases.
 - Record the pushed fix and completion reply in R015, then check the final-head review live.
+
+## Exited process-group leader follow-up
+
+Review 3939917795 identifies a surviving descendant when an owned process-group leader exits first. Reproduce this with an owned fixture, then reclaim the group independently of leader liveness in Python and Node, including a TERM-resistant child, before one follow-up review.
+
+- [x] Reproduce an orphaned member surviving Harness.stop after leader exit.
+- [x] Reclaim owned groups in both drivers, including TERM-resistant members and bounded forced cleanup.
+- [x] Verify four orphan cases, Python six inner interruptions and normal HTTP, Node fourteen inner interruptions, both identity controls and WAL preservation.
+- [x] Verify all ten outer interruptions after the group-state adjustment.
+- Record the pushed commit/reply in R016 before the final-head review.

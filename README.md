@@ -210,6 +210,7 @@ python3 scripts/test-runtime-server-identity.py
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-browser-server-identity.py
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-harness-termination.py
 python3 scripts/test-calendar-assets.py
+python3 scripts/test-harness-process-groups.py
 node scripts/test-verification-connection.mjs
 python3 scripts/test-verification-connection.py
 ```

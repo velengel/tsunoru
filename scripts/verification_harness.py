@@ -10,12 +10,13 @@ import time
 
 
 class Harness:
-    def __init__(self):
+    def __init__(self, shutdown_timeout=15):
         self.resources = ExitStack()
         self.depth = 0
         self.pending = None
         self.stops = {}
         self.directories = set()
+        self.shutdown_timeout = shutdown_timeout
 
     def terminate(self, sig, _frame):
         if self.depth:
@@ -93,19 +94,39 @@ class Harness:
             child = subprocess.Popen(command, **kwargs)
 
             def cleanup():
-                if child.poll() is None:
+                def signal_group(sig):
+                    child.poll()
                     try:
-                        os.killpg(child.pid, signal.SIGTERM)
+                        os.killpg(child.pid, sig)
+                        return True
                     except ProcessLookupError:
-                        pass
-                    try:
-                        child.wait(timeout=15)
-                    except subprocess.TimeoutExpired:
+                        return False
+                    except PermissionError as error:
+                        # A terminating leader can become a zombie between poll
+                        # and killpg. Reap it, but never ignore a live-group denial.
+                        child.poll()
                         try:
-                            os.killpg(child.pid, signal.SIGKILL)
+                            os.killpg(child.pid, 0)
                         except ProcessLookupError:
-                            pass
-                        child.wait(timeout=5)
+                            return False
+                        raise RuntimeError(f'Cannot signal owned group {child.pid} with {sig}') from error
+
+                def wait_group(timeout):
+                    deadline = time.monotonic() + timeout
+                    while True:
+                        child.poll()  # Reap the leader without equating it to the group.
+                        if not signal_group(0):
+                            return True
+                        if time.monotonic() >= deadline:
+                            return False
+                        time.sleep(0.02)
+
+                signal_group(signal.SIGTERM)
+                if not wait_group(self.shutdown_timeout):
+                    signal_group(signal.SIGKILL)
+                    if not wait_group(5):
+                        raise RuntimeError('Owned process group survived forced cleanup')
+                child.wait(timeout=5)
             self.stops[child] = self.register(cleanup)
         if '--harness-probe' in sys.argv:
             print('harness_probe_ready=' + json.dumps({'pids': [child.pid], 'directories': sorted(self.directories)}), flush=True)

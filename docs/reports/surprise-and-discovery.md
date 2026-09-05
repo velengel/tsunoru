@@ -647,3 +647,7 @@ The real shell asset checker still had a mktemp-to-trap gap that a stalled repla
 ## A connection object may silently become a different connection
 
 A valid identity response did not prevent later writes to a replacement listener. Even one Python HTTPConnection object could reconnect automatically. Both verification clients now bind identity and mutation to a single physical connection and refuse reconnection; deterministic handover tests show zero replacement writes after the fix.
+
+## Leader completion does not mean process-group completion
+
+An owned fixture child survived Harness.stop after its parent exited. Cleanup now tracks the dedicated group until no members remain, including a TERM-resistant member, and retires the cleanup registration after completion. Python reaps its leader before group probes and only treats a permission failure as completion when the group is confirmed absent.

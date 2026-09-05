@@ -6,6 +6,7 @@ import { once } from 'node:events';
 import { access, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ownedGroupCleanup } from './verification-process-group.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { if (e.code === 'ESRCH') return false; throw e; } };
 function descendants(parent) {
@@ -36,6 +37,7 @@ for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'soc
     cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'], detached: true,
   });
   const exit = once(runner, 'exit');
+  const stopGroup = ownedGroupCleanup(runner);
   let info, pids = [];
   let cleanupPromise;
   // Install ownership synchronously after spawn, before signal callbacks can run.
@@ -44,18 +46,16 @@ for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'soc
     if (runner.exitCode === null && runner.signalCode === null && runner.pid) {
       try { pids = [...new Set([...pids, ...descendants(runner.pid)])]; }
       catch (error) { inspectionError = error; }
-      runner.kill('SIGTERM');
-      let timer;
-      try {
-        await Promise.race([exit, new Promise((done) => { timer = setTimeout(done, 15000); })]);
-        if (runner.exitCode === null && runner.signalCode === null) {
-          try { process.kill(-runner.pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
-          await exit;
-        }
-      } finally { clearTimeout(timer); }
     }
-    for (const pid of pids.reverse()) if (alive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
-    if (info) await rm(info.temp, { recursive: true, force: true });
+    try {
+      await stopGroup();
+    } finally {
+      try {
+        for (const pid of pids.reverse()) if (alive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
+      } finally {
+        if (info) await rm(info.temp, { recursive: true, force: true });
+      }
+    }
     if (inspectionError) throw inspectionError;
   })();
   activeCleanup = cleanup;
