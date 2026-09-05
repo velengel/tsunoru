@@ -185,3 +185,21 @@ Finderを開く調査では、操作前に既存windowと情報・詳細panelを
 
 コミットは一つの作業区切りに絞り、subjectを `<prefix>: <summary>`、bodyを `why` と `what` で構成する。
 token、API key、password、private key、実値入りの環境ファイルはコミットしない。
+
+## Calendar browser regression
+
+After `dx build --web`, run the repository-owned browser verifier with an installed Playwright module.
+Playwright 1.62.0 and its Chromium 151 build were used for the recorded verification.
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs --stale-css
+```
+
+The runner starts this worktree's built server on its own loopback port with a disposable database and fresh browser profile.
+It checks the linked stylesheet against the bundled file, 320px and 1440px geometry, keyboard controls, and event creation through the post-answer matrix.
+The negative fixture checks that an HTTP 200 response containing old CSS is rejected.
+Screenshots and measurements are saved under ignored `var/browser-evidence/`; test data and owned processes are removed on exit.
+Each concurrently running build must use a different worktree or target directory, not just a different port.
+
+This is a desktop Chromium check. Physical iPhone operation and screen-reader speech require separate verification.

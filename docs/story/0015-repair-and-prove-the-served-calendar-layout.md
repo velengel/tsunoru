@@ -1,6 +1,6 @@
 # Story 0015: 配信中の候補日カレンダーを直して実ブラウザーで確かめる
 
-Status: in progress
+Status: complete
 
 Date: 2026-09-02
 
@@ -14,7 +14,7 @@ sourceのCSSにはtoolbarと七列gridがあるが、`127.0.0.1:8081` のHTMLが
 
 ## definition of done
 
-- 現在のfeatureをlocal mainへ統合し、修正を別branchで行う。
+- 既存の修正branchとworktreeを継続し、main向けPRとして検証済みの変更を渡す。
 - Dioxusが配信するHTMLからstylesheet URLを取得し、その実fileにcalendar固有selectorが含まれることを自動検査する。
 - 候補サーバーは既存serverとbuild出力、session cache、portを共有せず、同じ世代のSSR、Wasm、CSSを配信する。
 - 前月button、年月、次月buttonを一つのtoolbarへ置き、曜日と日付を七列へ揃える。
@@ -32,11 +32,11 @@ sourceのCSSにはtoolbarと七列gridがあるが、`127.0.0.1:8081` のHTMLが
 - [x] current featureをlocal mainへfast-forwardし、修正branchを作る。
 - [x] 配信assetと実ブラウザーを測るuser-level skillを作る。
 - [x] server分離と証拠の境界をADRへ記録する。
-- [ ] 配信stylesheetの世代不一致を再現する失敗するtestを書く。
-- [ ] 分離した候補サーバーでSSR、Wasm、CSSを同じbuildから配信する。
-- [ ] 320pxと1440pxでcomputed layoutとscreenshotを確認し、必要なCSSを直す。
-- [ ] calendar選択から回答後一覧まで実ブラウザーで操作する。
-- [ ] README、Story、検証記録、Surprise & Discoveryを更新する。
+- [x] 配信stylesheetの世代不一致を再現する失敗するtestを書く。
+- [x] 分離した候補サーバーでSSR、Wasm、CSSを同じbuildから配信する。
+- [x] 320pxと1440pxでcomputed layoutとscreenshotを確認し、必要なCSSを直す。
+- [x] calendar選択から回答後一覧まで実ブラウザーで操作する。
+- [x] README、Story、検証記録、Surprise & Discoveryを更新する。
 
 ## concern
 
@@ -45,3 +45,19 @@ sourceのCSSにはtoolbarと七列gridがあるが、`127.0.0.1:8081` のHTMLが
 - target directoryを分けると初回build時間とdisk使用量が増える。
 - calendarを七列へ戻しても、320pxでは一日あたりの幅が約25pxであり、44px四方にはできない。WCAG 2.2の24px四方を下限にする。
 - 自動化したChromium操作はscreen readerでの読み上げを証明しない。
+
+## 2026-09-05 resumption plan
+
+Migration is complete. Resume in the existing `fix/calendar-layout-verification` worktree and branch. The briefly created PR #5 is superseded; its planning work is preserved here.
+The local-main integration step above is historical; this run finishes through a feature PR.
+
+1. Add a failing live browser assertion for seven tracks, one toolbar row, 24px targets and page overflow; record unchanged-CSS evidence.
+2. Add a stale-stylesheet negative fixture, then apply the preserved narrow-calendar repair.
+3. Build into this worktree's own target directory. Use an owned server and disposable database for browser writes.
+4. Verify 320px and 1440px, pointer and keyboard, and calendar-to-answer completion with screenshots.
+5. Run all required checks. Review the complete PR diff, fix findings, repeat affected checks and mark ready after convergence.
+
+In-app browser bootstrap fails before browser selection with a trusted dependency path error.
+Use an independent installed Playwright Chromium test runner without changing plugin trust or global permissions.
+
+Verification: [browser report](../reports/0019-calendar-browser-verification.md). All implementation and local verification steps are complete; merge and deployment remain separate operations.

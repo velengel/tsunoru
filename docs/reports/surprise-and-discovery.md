@@ -540,3 +540,16 @@ This session's approval does not establish a general allow rule.
 A plain query-string call to `get_public_event` returned a missing-field HTTP 500.
 The installed Dioxus 0.7.10 JSON extractor reads the argument body, including for GET; the matching request returned HTTP 200 for the migrated data.
 See [the runtime report](0018-post-migration-runtime-verification.md) and [ADR 0026](../ADR/0026-isolate-runtime-verification.md).
+
+## Calendar geometry and hydration require separate checks
+
+On 2026-09-05, the pre-repair 320px page had seven grid tracks and no page overflow, yet two-digit dates wrapped to 32px-high labels.
+The preserved narrow-layout repair kept labels at 16px and widened targets from about 24.98px to 28.05px.
+A seven-column assertion alone would have missed the visible defect.
+
+During browser verification, SSR response inputs existed before Dioxus attached handlers, so fast automated input was lost during hydration.
+The runner now waits for the input's `data-dioxus-id`, as assigned by the installed Dioxus interpreter, before entering the response.
+This establishes the hydrated path, not a guarantee about user input made before hydration.
+The radio is operated through its visible label; force-clicking its visually hidden input is unnecessary.
+
+See [Story 0015's browser report](0019-calendar-browser-verification.md).
