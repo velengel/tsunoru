@@ -43,3 +43,12 @@ Reproduce cancellation of an outer harness, then centralize owned process/path c
 - [x] Apply signal-aware ownership scopes to all five drivers and to the outer regression runner itself.
 - [x] Verify ten outer interruption cases, six Python inner cases, fourteen Node inner cases, normal HTTP, both database identity guards and WAL preservation.
 - The commit-linked reply and the resulting final-head review are recorded in the judgment log and checked live on PR #6.
+
+## Asset-checker acquisition follow-up
+
+Review 3939819165 identifies a shell mktemp/assignment/trap gap that the stalled asset fixture does not exercise. Reproduce interruption of the real checker during acquisition, then eliminate its temporary files by checking HTTP responses in memory. Preserve the shell entrypoint and validate normal, stale and interrupted responses before another batched review.
+
+- [x] Reproduce a leftover directory during the real shell checker's acquisition.
+- [x] Remove temporary files and subprocesses from the checker implementation.
+- [x] Verify both signals, valid/stale CSS, wrong content type, missing HTML markers, the normal browser flow, stale-CSS browser control and fourteen browser shutdown cases.
+- Commit and reply evidence is retained in R014; final-head review remains a live PR-ready condition.

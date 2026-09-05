@@ -639,3 +639,7 @@ Deferring termination through ExitStack registration covers that interval and ke
 ## A cancellation-safe verifier still needs a cancellation-safe caller
 
 Terminating the outer regression driver bypassed Python's default cleanup even though the inner verifier handled the same signal. The failure reproduced a surviving seed server. Shared ownership scopes now cover all related drivers, including the new outer regression runner, and stop children before removing their working directories. Ten outer-driver signal cases complement the inner startup-phase regressions.
+
+## Some cleanup risks disappear when the resource is unnecessary
+
+The real shell asset checker still had a mktemp-to-trap gap that a stalled replacement fixture could not reveal. Its HTML and CSS only need comparison, so they now stay in memory. Removing those temporary files closes the interruption gap without another layer of ownership and signal handling.
