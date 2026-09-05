@@ -158,7 +158,9 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 - 指摘：[3939917795](https://github.com/velengel/tsunoru/pull/6#discussion_r3939917795)
 - 判断：対応が必要。親の終了確認だけでは、同じグループに残る子まで終了したとは言えません。所有する子を残して親が終了するfixtureで、Harness.stop後の残存を再現しました。
-- 状態：PythonとNodeで、親の生存と独立して所有グループを回収する修正を実装、検証済み。push後にコミットと返信リンクを追記します。
+- 状態：PythonとNodeで、親の生存と独立して所有グループを回収する修正を実装、検証、push、返信、スレッド解決済み。
+- 修正：[0505a5b](https://github.com/velengel/tsunoru/commit/0505a5b3cac34f1b10fa0aff321f0d0a14d80a8c)
+- 返信：[対応しました](https://github.com/velengel/tsunoru/pull/6#discussion_r3939955482)
 - 検証：両言語で通常の子とSIGTERMを無視する子の計4ケース、Python中断6ケースと通常HTTP、Node中断14ケース、外側中断10ケース、別DB拒否2種、WAL復元と元DB不変がPASS。
 - 履歴：R013の所有資源スコープを、親プロセスの終了後も残るグループへ適用します。完了した回収処理は再実行せず、終了した親の回収とグループ状態の確認を区別します。[ADR 0042](ADR/0042-reclaim-owned-process-groups-through-completion.md)に判断を記録します。
 
