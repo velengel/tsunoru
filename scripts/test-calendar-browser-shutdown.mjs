@@ -16,7 +16,14 @@ function descendants(parent) {
   return [...found];
 }
 for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
-  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], { cwd: root, env: stage.startsWith('pending-') ? { ...process.env, TSUNORU_TEST_PLAYWRIGHT: process.env.PLAYWRIGHT_MODULE, PLAYWRIGHT_MODULE: resolve(root, stage === 'pending-process' ? 'scripts/fixtures/pending-calendar-browser-process.mjs' : 'scripts/fixtures/pending-calendar-browser.mjs') } : process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const env = stage.startsWith('pending-') ? {
+    ...process.env, TSUNORU_TEST_PLAYWRIGHT: process.env.PLAYWRIGHT_MODULE,
+    PLAYWRIGHT_MODULE: resolve(root, stage === 'pending-process'
+      ? 'scripts/fixtures/pending-calendar-browser-process.mjs' : 'scripts/fixtures/pending-calendar-browser.mjs'),
+  } : process.env;
+  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], {
+    cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'],
+  });
   const exit = once(runner, 'exit');
   let info, pids = [];
   try {
@@ -24,16 +31,26 @@ for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'soc
       let output = '';
       const timeout = setTimeout(() => fail(new Error('shutdown probe readiness timed out')), 30000);
       runner.once('exit', () => { clearTimeout(timeout); fail(new Error('probe exited before readiness')); });
+      let received = false;
       runner.stdout.on('data', (data) => {
-        output += data;
-        const match = output.match(/shutdown_probe_ready=(.+)\n/);
-        if (match) { clearTimeout(timeout); done(JSON.parse(match[1])); }
-        if (stage.startsWith('pending-') && output.includes('pending_browser_launch=true')) {
-          const owned = descendants(runner.pid);
-          const serverPid = owned.find((pid) => execFileSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8' }).trim().endsWith('/server'));
-          assert(serverPid, 'Find the verifier-owned server');
-          const cwd = execFileSync('lsof', ['-a', '-p', String(serverPid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).split('\n').find((line) => line.startsWith('n')).slice(1);
-          clearTimeout(timeout); done({ serverPid, temp: cwd });
+        if (received) return;
+        try {
+          output += data;
+          const match = output.match(/shutdown_probe_ready=(.+)\n/);
+          // Pending-process waits until its real Playwright launch has started.
+          const launchStarted = !stage.startsWith('pending-') || output.includes('pending_browser_launch=true');
+          if (match && launchStarted) {
+            const owned = JSON.parse(match[1]);
+            assert.equal(typeof owned.temp, 'string', 'Probe publishes its disposable path');
+            assert(owned.serverPid === null || Number.isInteger(owned.serverPid), 'Probe publishes its owned PID');
+            received = true;
+            clearTimeout(timeout);
+            done(owned);
+          }
+        } catch (error) {
+          received = true;
+          clearTimeout(timeout);
+          fail(error);
         }
       });
       runner.stderr.on('data', (data) => process.stderr.write(data));
@@ -50,7 +67,12 @@ for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'soc
     console.log(`PASS ${stage} ${signal}: server, Chromium tree and temporary data removed`);
   } finally {
     // Also reclaim this test's owned resources when demonstrating the pre-fix failure.
-    if (runner.exitCode === null && runner.signalCode === null) { runner.kill('SIGKILL'); await exit; }
+    if (runner.exitCode === null && runner.signalCode === null) {
+      // Include children created before a readiness/parse failure.
+      pids = [...new Set([...pids, ...descendants(runner.pid)])];
+      runner.kill('SIGKILL');
+      await exit;
+    }
     for (const pid of pids.reverse()) if (alive(pid)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { if (e.code !== 'ESRCH') throw e; } }
     if (info) await rm(info.temp, { recursive: true, force: true });
   }

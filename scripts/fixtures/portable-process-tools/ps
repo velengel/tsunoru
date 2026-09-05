@@ -1,0 +1,7 @@
+#!/bin/sh
+# Permit only portable numeric process-tree inspection used by this regression.
+if [ "$1" = "-axo" ] && [ "$2" = "pid=,ppid=" ] && [ "$#" = 2 ]; then
+  exec /bin/ps "$@"
+fi
+echo "Unsupported process-name discovery in shutdown regression" >&2
+exit 2

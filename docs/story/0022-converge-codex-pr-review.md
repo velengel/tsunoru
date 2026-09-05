@@ -60,3 +60,8 @@ A cleanup timeout must be reported as failure rather than a successful shutdown.
 
 Codex discussion_r3939580165 requires deferring termination while Popen creates and publishes the owned server.
 Reproduce signals after the real child exists but before its constructor returns, then deliver deferred termination only after the cleanup variable holds that child.
+
+## Portable shutdown probe follow-up
+
+Codex discussion_r3939600856 requires explicit PID/path probe output instead of platform-specific ps comm paths and lsof.
+Use fixed repository process-tool fixtures that reject unsupported discovery commands, and route stdout parsing errors through the awaited promise.

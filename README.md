@@ -195,6 +195,7 @@ Playwright 1.62.0 and its Chromium 151 build were used for the recorded verifica
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/verify-calendar-browser.mjs --stale-css
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
+PATH="$PWD/scripts/fixtures/portable-process-tools:$PATH" PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
 python3 scripts/test-runtime-shutdown.py
 ```
 

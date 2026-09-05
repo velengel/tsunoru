@@ -151,7 +151,12 @@ try {
     `Asset check failed: ${assetResult.error?.message || assetError || assetResult.code}`);
   console.log(assetOutput.trim());
   await checkpoint();
-  browser = await (browserLaunch = chromium.launch({ headless: true, timeout: 5000, handleSIGINT: false, handleSIGTERM: false }));
+  browserLaunch = chromium.launch({ headless: true, timeout: 5000, handleSIGINT: false, handleSIGTERM: false });
+  // A probe may pause before the launch promise is awaited.
+  void browserLaunch.catch(() => {});
+  await shutdownProbe('pending-browser');
+  await shutdownProbe('pending-process');
+  browser = await browserLaunch;
   await shutdownProbe('browser');
   for (const width of [320, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });

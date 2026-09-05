@@ -135,3 +135,23 @@ This avoids changing OS signal masks that a new server could inherit.
 All four Python cases passed (publication and ready phases, each with SIGTERM and SIGINT), including server exit, disposable-directory removal and the expected signal exit status.
 The same isolated fixture suite passed the normal HTTP lifecycle and unchanged source-database checks; syntax and diff checks also passed.
 Self-review confirmed that deferred termination is released on both normal and exceptional exits and that signal handlers are restored when main returns.
+
+## Portable process discovery follow-up
+
+[Codex discussion_r3939600856](https://github.com/velengel/tsunoru/pull/6#discussion_r3939600856) requires a change: the regression inferred ownership from a macOS ps comm path and lsof, and exceptions in its stdout callback escaped promise cleanup.
+The verifier now publishes the owned PID and disposable directory at the pending-launch checkpoint, as it already does at other startup checkpoints.
+The regression waits for both that notification and the fixture's launch-start marker, parses inside try/catch, and rejects its awaited promise on a notification error.
+The failure path collects still-owned descendants before terminating the runner.
+
+The fixed fixtures under `scripts/fixtures/portable-process-tools` allow numeric PID/PPID discovery but reject process-name queries and lsof.
+The old ps invocation was confirmed to exit 2 against that fixture; the updated full regression passed all 14 cases under the constrained PATH.
+An initial temporary-script reproduction was rejected by automatic approval review; the accepted verification uses these inspectable repository fixtures instead.
+This proves removal of those command dependencies on macOS, not execution in a Linux environment, which remains unverified.
+
+Reproduction command from the worktree root:
+
+```sh
+PATH="$PWD/scripts/fixtures/portable-process-tools:$PATH" PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs node scripts/test-calendar-browser-shutdown.mjs
+```
+
+The normal 320px/1440px browser flow, syntax and diff checks passed after the notification change.

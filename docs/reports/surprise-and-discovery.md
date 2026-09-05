@@ -607,3 +607,9 @@ A bounded cleanup wait allows the owned server and disposable database to be rec
 Python signal handlers can interrupt a Popen constructor after it starts the server.
 Deferring the termination action until assignment closes this ownership gap without passing blocked signal masks into the child.
 The regression now observes both pre-publication and ready-state termination of a real server.
+
+## Process names are a poor ownership protocol
+
+A macOS ps comm path and lsof lookup made the new launch regression depend on host-specific tools.
+The verifier now publishes its PID and disposable path directly, while numeric PID/PPID inspection is used only to check descendants.
+A fixed constrained-PATH fixture verifies that process-name and lsof queries are no longer required.
