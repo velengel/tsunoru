@@ -5,7 +5,7 @@
 Story 0015 requires measured browser layout and real interaction evidence.
 In-app browser bootstrap fails its trusted-code-path check before browser selection.
 Playwright and Chromium are already installed locally; a dedicated test profile avoids the user's browser state.
-ADR 0021 requires isolated build outputs and matching served assets.
+ADR 0021 requires isolated build outputs; ADR 0029 defines served-browser evidence.
 
 ## decision
 

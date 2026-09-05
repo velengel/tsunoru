@@ -12,6 +12,15 @@
 - Write the user-observable test first, run it, and confirm the expected failure before writing the implementation that makes it pass.
 - Keep Story checkboxes and documentation aligned with the verified implementation state.
 
+## PR ready workflow
+
+- Continue in an existing suitable feature worktree; create a new one only when needed, and explain the reason.
+- Open a development draft PR before implementation, then record the plan, implement, and converge self-review and fixes.
+- Inspect Codex review summaries, reviews, and inline threads for the final PR head. For every finding, record whether a change is needed and why.
+- Apply necessary fixes, verify them, push, and repeat review inspection for the new head until findings converge. Resolve addressed threads only after the fixes are verified and pushed; record evidence-backed reasons for no-change decisions.
+- GitHub's ready flag can trigger review; it is not the user-facing completion criterion. Require an explicit completed Codex review for the final head, no pending necessary fixes, successful required checks, and a mergeable PR before delivering the PR-ready link.
+- If Codex review is unavailable or still running, report the pending boundary instead of declaring PR ready. Do not infer approval from silence or an older head's review.
+
 ## Git and secrets
 
 - On macOS, run `zsh scripts/verify-local-git-materialization.zsh` before `git status`, whole-repository inspection, or worktree creation. If it reports `dataless_files_present`, stop Git operations and use Finder's **Keep Downloaded** on the repository folder.

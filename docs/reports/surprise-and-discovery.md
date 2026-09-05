@@ -553,3 +553,10 @@ This establishes the hydrated path, not a guarantee about user input made before
 The radio is operated through its visible label; force-clicking its visually hidden input is unnecessary.
 
 See [Story 0015's browser report](0019-calendar-browser-verification.md).
+
+## PR readiness includes asynchronous review completion
+
+PR #6's ready flag triggered a Codex review that completed after the initial delivery message.
+The review identified ADR 0021 as a newly introduced record with several independent decisions; its lower number had been mistaken for an accepted-history exemption.
+The fix separates those decisions, and AGENTS.md now requires explicit final-head review completion and disposition of every finding before a PR-ready claim.
+See [Story 0022](../story/0022-converge-codex-pr-review.md) and [ADR 0030](../ADR/0030-require-codex-review-convergence-for-pr-ready.md).

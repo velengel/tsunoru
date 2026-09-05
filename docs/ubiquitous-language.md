@@ -320,3 +320,10 @@
 - 意味：browserが同じbuildから生成されたHTML、Wasm、stylesheetを取得し、sourceと対応する状態。
 - 使われ方：live HTMLが参照するhash付きstylesheetの内容と固有selectorを確認してから、computed layoutとscreenshotをvisual evidenceとして採用する。
 - 参考リンク：[Story 0015](story/0015-repair-and-prove-the-served-calendar-layout.md)、[ADR 0021](ADR/0021-isolate-served-assets-before-visual-verification.md)、[Dioxus 0.7: Assets](https://dioxuslabs.com/learn/0.7/essentials/ui/assets/)
+
+## PR ready
+
+- Meaning: the user-facing completion state after planning, implementation, required checks, self-review fixes and final-head Codex-review dispositions have converged and the PR is mergeable.
+- Usage: deliver the PR link only with that completed evidence; a pending external review remains pending work.
+- System synonym: GitHub calls its draft transition "Ready for review", but that flag alone is not this completion state.
+- Reference: [ADR 0030](ADR/0030-require-codex-review-convergence-for-pr-ready.md), [Story 0022](story/0022-converge-codex-pr-review.md).

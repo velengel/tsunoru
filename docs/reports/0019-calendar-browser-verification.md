@@ -60,3 +60,16 @@ Affected browser and stale-CSS tests were rerun after these corrections.
 
 Final review found no remaining merge-blocking issue within the calendar repair scope.
 The test deliberately verifies the hydrated response path; accepting input before hydration is outside this repair and is not claimed as verified.
+
+## Codex review disposition
+
+The first user-facing PR-ready claim preceded the asynchronous Codex review and did not satisfy the user's clarified completion condition.
+Local runtime evidence above remains valid; external-review convergence is now separately tracked by Story 0022 and ADR 0030.
+
+| Comment | Decision | Reason and response |
+| --- | --- | --- |
+| [discussion_r3939384154](https://github.com/velengel/tsunoru/pull/6#discussion_r3939384154), ADR 0021 mixes independent decisions | Change required | ADR 0021 is first introduced to main by this PR, so its older number is not an accepted-history exemption. Limit it to build-output isolation; move date-label policy to ADR 0028 and served-browser evidence to ADR 0029. Refer to existing ADR 0019 for native-button semantics and ADR 0027 for browser-runner/data isolation. |
+
+This correction changes documentation and instructions only; the verified application and test scripts are unchanged.
+Document structure, relative links, ID uniqueness, staged diff and secret checks are run for this correction.
+The final-head Codex review must complete before another PR-ready claim; elapsed time or absence of new comments is not a substitute.
