@@ -128,7 +128,9 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 - 指摘：[3939750034](https://github.com/velengel/tsunoru/pull/6#discussion_r3939750034)
 - 判断：対応が必要。内側の検証ツールがシグナルを処理しても、外側のPythonドライバーはSIGTERMでfinallyを通らず、子サーバーと一時データが残りました。Nodeと他の3ドライバーにも同じ管理上の不足があります。
-- 状態：5ドライバーを一括修正し、ローカル検証済み。push後に修正コミットと返信リンクを追記します。
+- 状態：5ドライバーを一括修正し、検証、push、返信、スレッド解決済み。
+- 修正：[fab63dc](https://github.com/velengel/tsunoru/commit/fab63dc330aae66fc5c4f03a807e5f642c9b0a45)
+- 返信：[対応しました](https://github.com/velengel/tsunoru/pull/6#discussion_r3939796788)
 - 検証：修正前に外側SIGTERMで子サーバー残存を再現。修正後は外側10ケース、内側Python6ケース・Node14ケース、通常HTTP、別DB拒否2種、WAL復元と元DB不変がPASS。
 - 履歴：R002、R004からR009、R012の終了処理の判断を、呼び出し元にも適用しました。一時資源の登録、所有プロセスの停止、一時ディレクトリの削除順序、新しい回帰テスト自体の終了処理をまとめて確認しました。[ADR 0039](ADR/0039-scope-regression-harness-resources.md)に判断を記録します。
 
