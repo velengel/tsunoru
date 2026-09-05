@@ -189,3 +189,11 @@ The same termination guard covers both directory and child publication; later sn
 The expanded Python regression passed six cases: directory creation, child publication and ready state, each with SIGTERM and SIGINT.
 Normal HTTP operation, wrong-database rejection and WAL-only source preservation also passed after this change.
 The unchanged Node regression remains the separately recorded 14-case evidence.
+
+## Outer-driver termination batch
+
+[Review 3939750034](https://github.com/velengel/tsunoru/pull/6#discussion_r3939750034) reproduced an outer Python driver's SIGTERM leaving its seed server alive. The fix covers the shutdown, identity and snapshot drivers in one batch, including the Node shutdown driver.
+
+Python drivers share a signal-aware resource scope: directory and process publication defer termination until cleanup is registered, children get their own process group, and directory teardown stops the scope's children first. The outer regression runner uses the same scope. The Node driver registers each iteration's cleanup synchronously after spawn, and shares that idempotent cleanup between normal failure and signal handlers. Both request graceful shutdown before bounded force cleanup.
+
+The outer regression validates reported PIDs against the runner's descendants and paths against the owned fixture locations before checking both SIGTERM and SIGINT. All ten cases passed. The existing six Python and fourteen Node inner-interruption cases, normal HTTP lifecycle, both wrong-database controls and WAL-only preservation also passed after the driver changes. Local review checked acquisition publication, imported fixture ownership, process-before-directory ordering, timeout cleanup and the new regression runner itself. SIGKILL and host failure remain outside executable cleanup guarantees; see [ADR 0039](../ADR/0039-scope-regression-harness-resources.md).

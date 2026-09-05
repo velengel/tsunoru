@@ -635,3 +635,7 @@ The log retains earlier reasoning and links while allowing reassessment when cur
 
 Python's TemporaryDirectory can be interrupted after mkdtemp creates a path but before its finalizer is installed.
 Deferring termination through ExitStack registration covers that interval and keeps later snapshot and database work inside an already-owned cleanup scope.
+
+## A cancellation-safe verifier still needs a cancellation-safe caller
+
+Terminating the outer regression driver bypassed Python's default cleanup even though the inner verifier handled the same signal. The failure reproduced a surviving seed server. Shared ownership scopes now cover all related drivers, including the new outer regression runner, and stop children before removing their working directories. Ten outer-driver signal cases complement the inner startup-phase regressions.

@@ -15,6 +15,9 @@ import time
 import urllib.error
 import urllib.request
 
+from verification_harness import Harness
+
+H = Harness()
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("runtime_verifier", ROOT / "scripts/verify-runtime.py")
 VERIFIER = importlib.util.module_from_spec(SPEC)
@@ -30,14 +33,14 @@ def alive(pid):
         return False
 
 
-def seed(root):
+def seed(root, owner):
     (root / "var").mkdir()
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
     env = {k: v for k, v in os.environ.items() if not k.startswith(("DIOXUS_", "TSUNORU_"))}
     env.update(IP="127.0.0.1", PORT=str(port))
-    child = subprocess.Popen([str(VERIFIER.BINARY)], cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    child = owner.popen([str(VERIFIER.BINARY)], cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         request = urllib.request.Request(f"http://127.0.0.1:{port}/api/events/get", data=json.dumps({"public_id": "00000000-0000-0000-0000-000000000000"}).encode(), method="GET", headers={"Content-Type": "application/json"})
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -51,20 +54,15 @@ def seed(root):
                 time.sleep(0.1)
         raise RuntimeError("fixture server did not become ready")
     finally:
-        child.terminate()
-        try:
-            child.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            child.kill()
-            child.wait()
+        owner.stop(child)
 
 
 def test_signals():
     for phase, sig in itertools.product(("directory", "publication", "ready"), (signal.SIGTERM, signal.SIGINT)):
-        with tempfile.TemporaryDirectory(prefix="runtime-signal-test-") as tmp:
+        with H.temporary_directory(prefix="runtime-signal-test-") as tmp:
             root = Path(tmp)
-            seed(root)
-            runner = subprocess.Popen([sys.executable, __file__, "--worker", str(root), "--shutdown-probe", f"--{phase}-probe"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            seed(root, H)
+            runner = H.popen([sys.executable, __file__, "--worker", str(root), "--shutdown-probe", f"--{phase}-probe"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             info = None
             try:
                 output = b""
@@ -88,16 +86,14 @@ def test_signals():
                 assert runner.returncode == 128 + sig, (sig.name, runner.returncode)
                 print(f"PASS {phase} {sig.name}: owned server and temporary data removed")
             finally:
-                if runner.poll() is None:
-                    runner.kill()
-                    runner.wait()
+                H.stop(runner)
                 if info and info["server_pid"] and alive(info["server_pid"]):
                     os.kill(info["server_pid"], signal.SIGKILL)
                 runner.stdout.close()
-    with tempfile.TemporaryDirectory(prefix="runtime-normal-test-") as tmp:
+    with H.temporary_directory(prefix="runtime-normal-test-") as tmp:
         root = Path(tmp)
-        seed(root)
-        subprocess.run([sys.executable, __file__, "--worker", str(root)], check=True)
+        seed(root, H)
+        H.run([sys.executable, __file__, "--worker", str(root)], check=True)
 
 
 if __name__ == "__main__":
@@ -145,4 +141,5 @@ if __name__ == "__main__":
             VERIFIER.subprocess.Popen = PublicationProbe
         VERIFIER.main()
     else:
-        test_signals()
+        with H:
+            test_signals()

@@ -206,6 +206,7 @@ python3 scripts/test-runtime-shutdown.py
 python3 scripts/test-runtime-source-snapshot.py
 python3 scripts/test-runtime-server-identity.py
 PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-browser-server-identity.py
+PLAYWRIGHT_MODULE=/path/to/playwright/index.mjs python3 scripts/test-harness-termination.py
 ```
 
 The runner starts this worktree's built server on its own loopback port with a disposable database and fresh browser profile.

@@ -33,3 +33,13 @@ The log must not be used to suppress fresh findings or to misrepresent an old he
 
 Review 3939721392 identifies the same ownership-publication gap in TemporaryDirectory construction.
 Add directory creation to the signal regression, reuse termination deferral while registering cleanup, and record its judgment and commit-linked reply in the next batch.
+
+## Outer harness termination batch
+
+Review 3939750034 covers the Python shutdown harness, the Node shutdown harness and the three identity/snapshot drivers.
+Reproduce cancellation of an outer harness, then centralize owned process/path cleanup in both languages and test both signals across all five drivers before one follow-up review.
+
+- [x] Reproduce an outer SIGTERM leaving the seed server alive.
+- [x] Apply signal-aware ownership scopes to all five drivers and to the outer regression runner itself.
+- [x] Verify ten outer interruption cases, six Python inner cases, fourteen Node inner cases, normal HTTP, both database identity guards and WAL preservation.
+- The commit-linked reply and the resulting final-head review are recorded in the judgment log and checked live on PR #6.
