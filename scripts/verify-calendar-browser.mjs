@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Dedicated Chromium regression: never connects to a user's browser or database.
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -18,6 +18,8 @@ const label = stale ? 'stale' : process.argv.includes('--baseline') ? 'baseline'
 const evidence = join(root, 'var/browser-evidence', label);
 let temp, tempCreation, socket, socketSetup, socketClosing, child, origin;
 let launchError, browser, browserLaunch, activePage;
+let assetChild, assetDone, assetStopPromise;
+let assetFinished = false;
 let stopping = false;
 let cleanupPromise;
 async function checkpoint() {
@@ -28,11 +30,27 @@ async function closeSocket() {
   await socketSetup.catch(() => {});
   return socketClosing ??= new Promise((done) => socket.close(() => done()));
 }
+function signalAssetGroup(signal) {
+  if (!assetChild?.pid) return;
+  try { process.kill(-assetChild.pid, signal); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+}
+function stopAsset() {
+  if (!assetChild || assetFinished) return Promise.resolve();
+  return assetStopPromise ??= (async () => {
+    signalAssetGroup('SIGTERM');
+    const timer = setTimeout(() => signalAssetGroup('SIGKILL'), 5000);
+    try { await assetDone; } finally { clearTimeout(timer); }
+  })();
+}
 function cleanup() {
   return cleanupPromise ??= (async () => {
     try {
-      const ownedBrowser = browser ?? await browserLaunch;
-      if (ownedBrowser) await ownedBrowser.close();
+      const results = await Promise.allSettled([
+        stopAsset(),
+        (async () => { const ownedBrowser = browser ?? await browserLaunch; if (ownedBrowser) await ownedBrowser.close(); })(),
+      ]);
+      const failed = results.find((result) => result.status === 'rejected');
+      if (failed) throw failed.reason;
     } finally {
       try {
         if (child && child.exitCode === null && child.signalCode === null && child.pid) {
@@ -96,7 +114,26 @@ try {
     await new Promise((r) => setTimeout(r, 100));
   }
   assert(ready, 'Owned server should become ready');
-  console.log(execFileSync('sh', [join(root, 'scripts/verify_served_calendar_assets.sh'), origin], { encoding: 'utf8', timeout: 30000 }).trim());
+  const checker = process.argv.includes('--shutdown-probe=asset')
+    ? 'scripts/fixtures/stalled-calendar-assets.sh' : 'scripts/verify_served_calendar_assets.sh';
+  assetChild = spawn('sh', [join(root, checker), origin], {
+    detached: true, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let assetOutput = '', assetError = '';
+  assetChild.stdout.on('data', (data) => { assetOutput += data; });
+  assetChild.stderr.on('data', (data) => { assetError += data; });
+  assetDone = new Promise((done) => {
+    assetChild.once('error', (error) => done({ error }));
+    assetChild.once('close', (code) => { assetFinished = true; done({ code }); });
+  });
+  await shutdownProbe('asset');
+  let assetTimedOut = false;
+  const assetTimer = setTimeout(() => { assetTimedOut = true; void stopAsset(); }, 30000);
+  let assetResult;
+  try { assetResult = await assetDone; } finally { clearTimeout(assetTimer); }
+  assert(!assetTimedOut && !assetResult.error && assetResult.code === 0,
+    `Asset check failed: ${assetResult.error?.message || assetError || assetResult.code}`);
+  console.log(assetOutput.trim());
   await checkpoint();
   browser = await (browserLaunch = chromium.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false }));
   await shutdownProbe('browser');

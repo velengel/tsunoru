@@ -15,7 +15,7 @@ function descendants(parent) {
   found.delete(parent);
   return [...found];
 }
-for (const stage of ['temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
+for (const stage of ['asset', 'temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
   const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], { cwd: root, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
   const exit = once(runner, 'exit');
   let info, pids = [];

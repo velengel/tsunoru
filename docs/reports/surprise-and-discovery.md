@@ -582,3 +582,10 @@ A cross-check of sibling verification tools is useful when a lifecycle defect is
 A later review caught an earlier lifecycle gap: registering cleanup after initialization leaves startup resources unprotected.
 The expanded browser regression now stops the verifier at four acquisition phases with both termination signals.
 Cleanup is installed first and can await pending resource acquisition before removing it.
+
+
+## A synchronous subprocess can block registered signal handlers
+
+The expanded startup cleanup still left a synchronous asset check that could block Node's event loop during a stall.
+The checker is now an owned asynchronous process group, and the signal regression includes a deliberately stalled checker.
+Cleanup waits for both browser and checker cleanup even if one reports a failure.
