@@ -221,3 +221,11 @@ The user subsequently stopped this loop and set a two-round limit. [ADR 0043](AD
 今後は受信済みの全指摘を集めてから判断し、共通原因をまとめ、関連する箇所のローカルレビューと修正を収束させて一度の再レビューへ進みます。
 返信は各スレッドに行いますが、再レビューは返信ごとに起動しません。
 運用の根拠は[ADR 0034](ADR/0034-record-review-judgments-in-repository.md)、[ADR 0035](ADR/0035-reply-to-addressed-review-comments.md)、[ADR 0036](ADR/0036-batch-review-follow-up.md)です。
+
+## R028-R030: Rust Worker vertical slice (2026-09-06)
+
+- R028（セキュリティ）: **要対応（次段階）**。最小 Worker は公開 API に必要な認証・capability 検証を持たないため、ローカル検証に限定した。
+- R029（エラー契約）: **保留**。D1 の重複・保存エラーは次段階の認証・匿名回答 API とまとめて設計する。
+- R030（スコープ）: **変更不要**。イベント作成までの縦切りは ADR 0049 の段階的移行方針に一致する。
+
+実装・検証: [c2145ae](https://github.com/velengel/tsunoru/commit/c2145ae)。
