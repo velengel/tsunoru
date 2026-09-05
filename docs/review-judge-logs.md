@@ -12,6 +12,7 @@ GitHubレビューコメントではなく、実験実装のローカル判断�
 | R027 | 今回採用しない | Dioxus依存のforkや全面TypeScript化は小実験の目的を超える。serverの実ビルド失敗とbrowser PASSを残して別判断にする |
 
 実行結果、修正ファイル、再現方法は[結果](reports/0023-cloudflare-runtime-spike.md)と[HTTP検証](../experiments/cloudflare/verify.mjs)を参照。
+修正と証拠のcommit: [8ae4fd8](https://github.com/velengel/tsunoru/commit/8ae4fd8)。検証後push済み。GitHub上の対応対象コメントはないため返信は行っていない。
 
 ## PR #7 公開計画の敵対的検証1往復
 
