@@ -109,3 +109,18 @@ A fixed repository fixture reproduced the missed shutdown deadline before implem
 The checker now runs asynchronously in its own process group, and cleanup terminates both its shell and descendants, escalating only that group after a bounded wait.
 The regression now covers five phases, including the stalled checker, with both SIGTERM and SIGINT (10 cases).
 Normal browser flow and the stale-CSS negative case are rerun after this correction.
+
+## Pending browser launch follow-up
+
+[Codex discussion_r3939552354](https://github.com/velengel/tsunoru/pull/6#discussion_r3939552354) requires a change: awaiting an unresolved browser launch prevented server and disposable-directory cleanup after a termination signal.
+A never-settling launch fixture reproduced the 15-second regression deadline failure before the fix.
+Browser cleanup now has a 6-second deadline, and real Playwright launch uses its documented 5-second timeout.
+Timeouts exit with failure status 1 after the remaining cleanup; completed cleanup on ordinary signals retains status 130/143.
+A slow machine taking over 5 seconds to launch Chromium now fails the verification explicitly and may require revisiting this deadline.
+
+All 14 shutdown cases passed: never-settling launch, an actual Playwright-owned process that never establishes its browser connection, asset checker, temporary-directory acquisition, socket acquisition, server startup and launched browser, each with SIGTERM and SIGINT.
+The process fixture uses a dedicated executable that sleeps, and the test observes only descendants of its verifier and the owned server's cwd.
+The installed Playwright 1.62.0 process launcher also registers an exit handler for its owned browser processes; this was inspected locally, while the stalled-process cases verify actual process removal.
+The API timeout is documented in [Playwright BrowserType.launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-option-timeout).
+
+The normal 320px/1440px browser flow, stale-CSS negative control, syntax checks and public-snapshot boundary check passed again after this change.

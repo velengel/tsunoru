@@ -595,3 +595,9 @@ Cleanup waits for both browser and checker cleanup even if one reports a failure
 Official Codex documentation explicitly supports a Code Review Rules section in applicable AGENTS.md files, while hosted automatic-review toggles are managed in Codex settings.
 The existing development workflow therefore needed a concise review-specific section, not a new configuration format.
 See [the source-backed configuration record](0020-codex-review-configuration.md).
+
+## A launched-browser checkpoint does not cover pending launch
+
+The new repository review rule exposed an untested interval before Chromium launch resolves.
+A never-settling launch promise and an actual unresponsive process now have dedicated signal regressions.
+A bounded cleanup wait allows the owned server and disposable database to be reclaimed even when browser startup fails; the runner reports failure rather than claiming successful cleanup.

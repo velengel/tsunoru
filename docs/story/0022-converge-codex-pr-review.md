@@ -49,3 +49,9 @@ Test all four startup phases with SIGTERM and SIGINT, then rerun normal browser 
 
 Codex discussion_r3939494231 requires asynchronous asset checking so a stalled checker cannot block signal cleanup.
 Reproduce termination during a stalled checker, then own and terminate its subprocess group from shared cleanup.
+
+## Pending browser launch follow-up
+
+Codex discussion_r3939552354 requires bounded browser cleanup while launch is pending.
+Reproduce a launch promise that never settles with SIGTERM and SIGINT, then bound the wait so server and temporary-directory cleanup still run.
+A cleanup timeout must be reported as failure rather than a successful shutdown.

@@ -42,12 +42,28 @@ function stopAsset() {
     try { await assetDone; } finally { clearTimeout(timer); }
   })();
 }
+async function closeBrowser() {
+  let timer;
+  // Leave the close continuation attached: a launch that settles during other
+  // resource cleanup must still close its browser rather than start tests.
+  const closing = (async () => {
+    const ownedBrowser = browser ?? await browserLaunch;
+    if (ownedBrowser) await ownedBrowser.close();
+  })();
+  try {
+    await Promise.race([closing, new Promise((_, fail) => {
+      timer = setTimeout(() => fail(new Error('Browser cleanup exceeded 6 seconds')), 6000);
+    })]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 function cleanup() {
   return cleanupPromise ??= (async () => {
     try {
       const results = await Promise.allSettled([
         stopAsset(),
-        (async () => { const ownedBrowser = browser ?? await browserLaunch; if (ownedBrowser) await ownedBrowser.close(); })(),
+        closeBrowser(),
       ]);
       const failed = results.find((result) => result.status === 'rejected');
       if (failed) throw failed.reason;
@@ -71,7 +87,7 @@ function cleanup() {
 for (const [signal, code] of [['SIGINT', 130], ['SIGTERM', 143]]) {
   process.on(signal, () => {
     stopping = true;
-    void cleanup().then(() => process.exit(code), () => process.exit(1));
+    void cleanup().then(() => process.exit(code), (error) => { console.error(error.message); process.exit(1); });
   });
 }
 async function shutdownProbe(stage) {
@@ -135,7 +151,7 @@ try {
     `Asset check failed: ${assetResult.error?.message || assetError || assetResult.code}`);
   console.log(assetOutput.trim());
   await checkpoint();
-  browser = await (browserLaunch = chromium.launch({ headless: true, handleSIGINT: false, handleSIGTERM: false }));
+  browser = await (browserLaunch = chromium.launch({ headless: true, timeout: 5000, handleSIGINT: false, handleSIGTERM: false }));
   await shutdownProbe('browser');
   for (const width of [320, 1440]) {
     const context = await browser.newContext({ viewport: { width, height: 1000 }, reducedMotion: 'reduce' });

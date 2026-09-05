@@ -15,8 +15,8 @@ function descendants(parent) {
   found.delete(parent);
   return [...found];
 }
-for (const stage of ['asset', 'temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
-  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], { cwd: root, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+for (const stage of ['pending-browser', 'pending-process', 'asset', 'temp', 'socket', 'server', 'browser']) for (const signal of ['SIGTERM', 'SIGINT']) {
+  const runner = spawn(process.execPath, ['scripts/verify-calendar-browser.mjs', `--shutdown-probe=${stage}`], { cwd: root, env: stage.startsWith('pending-') ? { ...process.env, TSUNORU_TEST_PLAYWRIGHT: process.env.PLAYWRIGHT_MODULE, PLAYWRIGHT_MODULE: resolve(root, stage === 'pending-process' ? 'scripts/fixtures/pending-calendar-browser-process.mjs' : 'scripts/fixtures/pending-calendar-browser.mjs') } : process.env, stdio: ['ignore', 'pipe', 'pipe'] });
   const exit = once(runner, 'exit');
   let info, pids = [];
   try {
@@ -28,6 +28,13 @@ for (const stage of ['asset', 'temp', 'socket', 'server', 'browser']) for (const
         output += data;
         const match = output.match(/shutdown_probe_ready=(.+)\n/);
         if (match) { clearTimeout(timeout); done(JSON.parse(match[1])); }
+        if (stage.startsWith('pending-') && output.includes('pending_browser_launch=true')) {
+          const owned = descendants(runner.pid);
+          const serverPid = owned.find((pid) => execFileSync('ps', ['-p', String(pid), '-o', 'comm='], { encoding: 'utf8' }).trim().endsWith('/server'));
+          assert(serverPid, 'Find the verifier-owned server');
+          const cwd = execFileSync('lsof', ['-a', '-p', String(serverPid), '-d', 'cwd', '-Fn'], { encoding: 'utf8' }).split('\n').find((line) => line.startsWith('n')).slice(1);
+          clearTimeout(timeout); done({ serverPid, temp: cwd });
+        }
       });
       runner.stderr.on('data', (data) => process.stderr.write(data));
     });
@@ -36,7 +43,7 @@ for (const stage of ['asset', 'temp', 'socket', 'server', 'browser']) for (const
     runner.kill(signal);
     let timer;
     const result = await Promise.race([exit, new Promise((_, fail) => { timer = setTimeout(() => fail(new Error('signal cleanup timed out')), 15000); })]).finally(() => clearTimeout(timer));
-    assert.equal(result[0], signal === 'SIGINT' ? 130 : 143, 'Verifier exits only after signal cleanup');
+    assert.equal(result[0], stage.startsWith('pending-') ? 1 : signal === 'SIGINT' ? 130 : 143, 'Verifier exits only after signal cleanup');
     if (info.serverPid) assert(!alive(info.serverPid), `${signal}: owned server must stop`);
     assert(pids.every((pid) => !alive(pid)), `${signal}: owned browser descendants must stop`);
     await assert.rejects(access(info.temp), { code: 'ENOENT' }, `${signal}: disposable database directory must be removed`);
