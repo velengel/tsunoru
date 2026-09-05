@@ -655,3 +655,9 @@ A valid identity response did not prevent later writes to a replacement listener
 ## Leader completion does not mean process-group completion
 
 An owned fixture child survived Harness.stop after its parent exited. Cleanup now tracks the dedicated group until no members remain, including a TERM-resistant member, and retires the cleanup registration after completion. Python reaps its leader before group probes and only treats a permission failure as completion when the group is confirmed absent.
+## 2026-09-05 公開計画
+
+- Cloudflareは新規構成でWorkers Static Assetsを推奨するが、Rust対応は現行Dioxus/SQLxバイナリの互換性を意味しない。Containersもローカルdiskは非永続であり、配置先だけ替える案には保存設計が残る。
+- 主催権限はlocalStorageにあるため、DB移転だけではoriginや端末を越えて引き継がれない。account履歴も主催権限の代わりにならない。
+- backup復元は失効済みsessionや削除を巻き戻し得る。復元後の失効と削除再適用を公開条件へ追加した。
+- 一次資料とコードの根拠、採用しない案、検証1往復の結果は[公開計画](0021-publication-plan.md)と[判断ログ](../review-judge-logs.md)を正とする。
