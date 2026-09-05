@@ -1,5 +1,9 @@
 # Surprise & Discovery
 
+## Batching needs a stopping condition
+
+Grouping related fixes did not prevent repeated review passes from expanding this PR. The user's correction sets a two-round limit and makes scope, demonstrated impact and remaining risk part of the merge decision. Review convergence is no longer an unbounded completion requirement; ADR 0043 is authoritative.
+
 Date: 2026-09-01
 
 ## Dioxus 0.7系の最新安定版
@@ -529,3 +533,125 @@ process一覧と`lsof`にはCargo、Dioxus、Gitによる旧pathへの書込み�
 
 一回目の削除失敗だけを再実行の根拠にせず、残存fileとprocessを読み直した。
 source、Git履歴、利用者dataが残っていないことを確認した後、同じrootを削除してpath不在を確認した。
+
+## Post-migration runtime checks can own disposable data
+
+On 2026-09-05, automatic review rejected an ad-hoc temporary lifecycle script and recommended a repository-scoped script.
+The reviewed replacement, `scripts/verify-runtime.py`, owns a loopback server and a disposable SQLite backup, then checks the original SQL dump and database hash.
+It passed review and the full anonymous HTTP lifecycle without broadening global permissions.
+This session's approval does not establish a general allow rule.
+
+A plain query-string call to `get_public_event` returned a missing-field HTTP 500.
+The installed Dioxus 0.7.10 JSON extractor reads the argument body, including for GET; the matching request returned HTTP 200 for the migrated data.
+See [the runtime report](0018-post-migration-runtime-verification.md) and [ADR 0026](../ADR/0026-isolate-runtime-verification.md).
+
+## Calendar geometry and hydration require separate checks
+
+On 2026-09-05, the pre-repair 320px page had seven grid tracks and no page overflow, yet two-digit dates wrapped to 32px-high labels.
+The preserved narrow-layout repair kept labels at 16px and widened targets from about 24.98px to 28.05px.
+A seven-column assertion alone would have missed the visible defect.
+
+During browser verification, SSR response inputs existed before Dioxus attached handlers, so fast automated input was lost during hydration.
+The runner now waits for the input's `data-dioxus-id`, as assigned by the installed Dioxus interpreter, before entering the response.
+This establishes the hydrated path, not a guarantee about user input made before hydration.
+The radio is operated through its visible label; force-clicking its visually hidden input is unnecessary.
+
+See [Story 0015's browser report](0019-calendar-browser-verification.md).
+
+## PR readiness includes asynchronous review completion
+
+PR #6's ready flag triggered a Codex review that completed after the initial delivery message.
+The review identified ADR 0021 as a newly introduced record with several independent decisions; its lower number had been mistaken for an accepted-history exemption.
+The fix separates those decisions, and AGENTS.md now requires explicit final-head review completion and disposition of every finding before a PR-ready claim.
+See [Story 0022](../story/0022-converge-codex-pr-review.md) and [ADR 0030](../ADR/0030-require-codex-review-convergence-for-pr-ready.md).
+
+
+## Verifier signal ownership must include Playwright
+
+The second Codex review exposed a termination path missing from the browser verifier.
+A signal delivered to Node alone did not complete cleanup; Playwright also installs signal handlers by default.
+Explicit verifier handlers now own SIGINT/SIGTERM and call the same idempotent cleanup as normal exit, with tests checking child-process and temporary-data removal.
+See [the review dispositions](0019-calendar-browser-verification.md#termination-signal-follow-up).
+
+
+## Review convergence extends across sibling verifiers
+
+After the browser verifier's signal cleanup was fixed, Codex found the equivalent Python verifier gap.
+A dedicated fixture reproduced the live server left behind by direct SIGTERM, and both signal paths now unwind Python's existing cleanup.
+A cross-check of sibling verification tools is useful when a lifecycle defect is found in one tool.
+
+
+## Signal cleanup must cover resource acquisition
+
+A later review caught an earlier lifecycle gap: registering cleanup after initialization leaves startup resources unprotected.
+The expanded browser regression now stops the verifier at four acquisition phases with both termination signals.
+Cleanup is installed first and can await pending resource acquisition before removing it.
+
+
+## A synchronous subprocess can block registered signal handlers
+
+The expanded startup cleanup still left a synchronous asset check that could block Node's event loop during a stall.
+The checker is now an owned asynchronous process group, and the signal regression includes a deliberately stalled checker.
+Cleanup waits for both browser and checker cleanup even if one reports a failure.
+
+## Review guidance and review triggers have different configuration locations
+
+Official Codex documentation explicitly supports a Code Review Rules section in applicable AGENTS.md files, while hosted automatic-review toggles are managed in Codex settings.
+The existing development workflow therefore needed a concise review-specific section, not a new configuration format.
+See [the source-backed configuration record](0020-codex-review-configuration.md).
+
+## A launched-browser checkpoint does not cover pending launch
+
+The new repository review rule exposed an untested interval before Chromium launch resolves.
+A never-settling launch promise and an actual unresponsive process now have dedicated signal regressions.
+A bounded cleanup wait allows the owned server and disposable database to be reclaimed even when browser startup fails; the runner reports failure rather than claiming successful cleanup.
+
+## A subprocess can exist before its cleanup handle is assigned
+
+Python signal handlers can interrupt a Popen constructor after it starts the server.
+Deferring the termination action until assignment closes this ownership gap without passing blocked signal masks into the child.
+The regression now observes both pre-publication and ready-state termination of a real server.
+
+## Process names are a poor ownership protocol
+
+A macOS ps comm path and lsof lookup made the new launch regression depend on host-specific tools.
+The verifier now publishes its PID and disposable path directly, while numeric PID/PPID inspection is used only to check descendants.
+A fixed constrained-PATH fixture verifies that process-name and lsof queries are no longer required.
+
+## Matching assets do not identify the writable database
+
+A real TSUNORU server with the same bundle but another disposable database passed the old browser checks and received two event writes.
+The equivalent HTTP fixture received one, so the batch review extended the fix across both verifiers before another external review.
+Private database markers now establish the intended target before HTTP test mutations.
+
+## Read-only SQLite can still affect source sidecars
+
+A WAL fixture without SHM reproduced source-file changes during mode=ro inspection.
+SQL inspection now runs only against a byte-stable disposable snapshot, including committed WAL data, while the complete source file set is compared without a SQLite connection.
+
+## Review judgments can guide a broader local pass
+
+The user requested a dedicated judgment log and commit-linked completion replies.
+The current batch groups related isolation findings and cross-checks both verifiers, rather than triggering another review after each fix.
+The log retains earlier reasoning and links while allowing reassessment when current evidence changes.
+
+## TemporaryDirectory publishes cleanup after creating the path
+
+Python's TemporaryDirectory can be interrupted after mkdtemp creates a path but before its finalizer is installed.
+Deferring termination through ExitStack registration covers that interval and keeps later snapshot and database work inside an already-owned cleanup scope.
+
+## A cancellation-safe verifier still needs a cancellation-safe caller
+
+Terminating the outer regression driver bypassed Python's default cleanup even though the inner verifier handled the same signal. The failure reproduced a surviving seed server. Shared ownership scopes now cover all related drivers, including the new outer regression runner, and stop children before removing their working directories. Ten outer-driver signal cases complement the inner startup-phase regressions.
+
+## Some cleanup risks disappear when the resource is unnecessary
+
+The real shell asset checker still had a mktemp-to-trap gap that a stalled replacement fixture could not reveal. Its HTML and CSS only need comparison, so they now stay in memory. Removing those temporary files closes the interruption gap without another layer of ownership and signal handling.
+
+## A connection object may silently become a different connection
+
+A valid identity response did not prevent later writes to a replacement listener. Even one Python HTTPConnection object could reconnect automatically. Both verification clients now bind identity and mutation to a single physical connection and refuse reconnection; deterministic handover tests show zero replacement writes after the fix.
+
+## Leader completion does not mean process-group completion
+
+An owned fixture child survived Harness.stop after its parent exited. Cleanup now tracks the dedicated group until no members remain, including a TERM-resistant member, and retires the cleanup registration after completion. Python reaps its leader before group probes and only treats a permission failure as completion when the group is confirmed absent.

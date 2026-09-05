@@ -313,3 +313,45 @@
 - 意味：iCloud Driveなど、macOS File Providerがlocal placeholder、download、uploadを管理するfilesystem領域。
 - 使われ方：File Provider内のrepositoryではKeep Downloadedとpreflightを要求する。正本とlinked worktreeの作成先には使わない。
 - 参考リンク：[Apple: iCloud Driveのfileとfolderを操作する](https://support.apple.com/guide/mac-help/work-with-folders-and-files-in-icloud-drive-mchl1a02d711/mac)、[ADR 0024](ADR/0024-require-local-git-materialization-before-worktree-creation.md)
+
+## 配信asset整合性
+
+- 同義語：`asset provenance`。検証codeと技術文書でだけ使う。
+- 意味：browserが同じbuildから生成されたHTML、Wasm、stylesheetを取得し、sourceと対応する状態。
+- 使われ方：live HTMLが参照するhash付きstylesheetの内容と固有selectorを確認してから、computed layoutとscreenshotをvisual evidenceとして採用する。
+- 参考リンク：[Story 0015](story/0015-repair-and-prove-the-served-calendar-layout.md)、[ADR 0021](ADR/0021-isolate-served-assets-before-visual-verification.md)、[Dioxus 0.7: Assets](https://dioxuslabs.com/learn/0.7/essentials/ui/assets/)
+
+## PR ready
+
+- Meaning: the user-facing completion state after planning, implementation, required checks, self-review fixes and final-head Codex-review dispositions have converged and the PR is mergeable.
+- Usage: deliver the PR link only with that completed evidence; a pending external review remains pending work.
+- System synonym: GitHub calls its draft transition "Ready for review", but that flag alone is not this completion state.
+- Reference: [ADR 0030](ADR/0030-require-codex-review-convergence-for-pr-ready.md), [Story 0022](story/0022-converge-codex-pr-review.md).
+
+## Code Review Rules
+
+- 意味：CodexがPRの変更をレビューするときに参照する、リポジトリ固有の確認観点。
+- 使われ方：ルートの `AGENTS.md` に問題となる振る舞いと許容される経路を記載する。自動レビューの起動設定はCodexの設定画面で管理する。
+- 避けられないシステム上の同義語：公式の見出し名 `Code Review Rules` を使う。
+- 参考リンク：[OpenAIのレビュー設定](https://learn.chatgpt.com/docs/third-party/github#customize-what-codex-reviews)、[ADR 0033](ADR/0033-keep-code-review-rules-in-root-agents.md)
+
+## レビュー判断履歴
+
+- 意味：レビュー指摘ごとの対応要否、理由、検証、関連リンクを残す記録。
+- 使われ方：`docs/review-judge-logs.md` をローカルコードレビューで参照し、再判断は以前の経緯を残して追記する。
+- 避けられないシステム上の同義語：専用のsystem用語はない。ファイル名は `review-judge-logs.md` を使う。
+- 参考リンク：[ADR 0034](ADR/0034-record-review-judgments-in-repository.md)
+
+## 検証用DBの目印
+
+- 意味：検証先が自分の使い捨てDBであることを、読み取りAPIで照合する毎回異なるイベントIDと名前。
+- 使われ方：隔離DBへ直接入れ、HTTPによるテスト書き込みを始める前に一致を確認する。元DBには挿入しない。
+- 避けられないシステム上の同義語：検証スクリプトの `database identity`。
+- 参考リンク：[ADR 0038](ADR/0038-confirm-verifier-database-identity-before-http-writes.md)
+
+## 検証通信の接続固定
+
+- 意味：DBの目印確認と一回の書き込みを同じTCP接続に束ね、切断時の再接続を禁止すること。
+- 使われ方：検証用HTTPクライアントとブラウザー操作の書き込みに適用し、ポートを引き継いだ別プロセスへの送信を防ぐ。
+- 避けられないシステム上の同義語：専用のsystem用語はない。実装では `BoundHTTPConnection` と `BoundAgent` を使う。
+- 参考リンク：[ADR 0041](ADR/0041-bind-verification-writes-to-one-connection.md)

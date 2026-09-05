@@ -1,0 +1,4 @@
+#!/bin/sh
+# The shutdown regression must work without lsof installed.
+echo "lsof is unavailable in this fixture" >&2
+exit 127

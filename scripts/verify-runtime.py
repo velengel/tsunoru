@@ -1,0 +1,248 @@
+#!/usr/bin/env python3
+"""Verify the built HTTP server using a disposable copy of the local database.
+
+Run from any directory: python3 scripts/verify-runtime.py
+Requires: dx build --web (or a completed dx serve --web build).
+Only the child server receives test writes. No credentials are printed or saved.
+"""
+
+from contextlib import ExitStack, closing, contextmanager
+import hashlib
+import json
+import os
+from pathlib import Path
+import secrets
+import signal
+import socket
+import sys
+import sqlite3
+import subprocess
+import tempfile
+import time
+import urllib.error
+import urllib.request
+import uuid
+
+from verification_connection import BoundHTTPConnection
+
+
+ROOT = Path(__file__).resolve().parents[1]
+BINARY = ROOT / "target/dx/tsunoru/debug/web/server"
+SOURCE = ROOT / "var/tsunoru.sqlite3"
+
+
+def check(condition, message):
+    if not condition:
+        raise RuntimeError(message)
+    print(f"PASS {message}", flush=True)
+
+
+def database_files(database):
+    result = {}
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        path = Path(str(database) + suffix)
+        try:
+            result[suffix] = path.read_bytes()
+        except FileNotFoundError:
+            if not suffix:
+                raise
+            result[suffix] = None
+    return result
+
+
+def snapshot_source(database, destination):
+    state = database_files(database)
+    if database_files(database) != state:
+        raise RuntimeError("source database changed during snapshot; retry when quiescent")
+    destination.parent.mkdir()
+    for suffix, contents in state.items():
+        # Rebuild WAL shared memory only within the disposable snapshot.
+        if contents is not None and suffix != "-shm":
+            Path(str(destination) + suffix).write_bytes(contents)
+    if database_files(database) != state:
+        raise RuntimeError("source database changed during snapshot; retry when quiescent")
+    return state
+
+
+def verify(defer_termination):
+    check(BINARY.is_file(), "built server exists")
+    check(SOURCE.is_file(), "original database exists")
+    with ExitStack() as resources:
+        # Register cleanup before a signal can interrupt publication of the path.
+        with defer_termination():
+            tmp = resources.enter_context(tempfile.TemporaryDirectory(prefix="runtime-check-", dir=ROOT / "var"))
+        directory = Path(tmp)
+        (directory / "var").mkdir()
+        snapshot = directory / "source/tsunoru.sqlite3"
+        source_state = snapshot_source(SOURCE, snapshot)
+        with closing(sqlite3.connect(snapshot)) as source:
+            check(source.execute("PRAGMA integrity_check").fetchone() == ("ok",), "source integrity")
+            public_ids = [r[0] for r in source.execute("SELECT public_id FROM events")]
+            with closing(sqlite3.connect(directory / "var/tsunoru.sqlite3")) as copy:
+                source.backup(copy)
+        identity_id = str(uuid.uuid4())
+        identity_name = "Verification identity " + str(uuid.uuid4())
+        with closing(sqlite3.connect(directory / "var/tsunoru.sqlite3")) as copy:
+            copy.execute("INSERT INTO events (public_id, name, time_zone, organizer_capability_hash) VALUES (?, ?, ?, ?)",
+                         (identity_id, identity_name, "Asia/Tokyo", hashlib.sha256(secrets.token_bytes(32)).hexdigest()))
+            copy.commit()
+        with socket.socket() as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
+        base = f"http://127.0.0.1:{port}"
+        # Keep launch settings explicit; do not inherit public-origin/development settings.
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(("DIOXUS_", "TSUNORU_"))}
+        env.update(IP="127.0.0.1", PORT=str(port))
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with (directory / "server.log").open("w") as log:
+            child = None
+            try:
+                # Publish ownership before a deferred signal can unwind cleanup.
+                with defer_termination():
+                    child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
+                                             stdout=log, stderr=subprocess.STDOUT)
+                def raw_request(path, data=None, method=None, expected=200, connection=None):
+                    if child.poll() is not None:
+                        raise RuntimeError("owned server exited; refusing HTTP requests")
+                    body = None if data is None else json.dumps(data).encode()
+                    req = urllib.request.Request(base + path, data=body, method=method,
+                                                 headers={"Content-Type": "application/json", "Origin": base})
+                    if connection is not None:
+                        connection.request(req.get_method(), path, body=body, headers=dict(req.header_items()))
+                        with connection.getresponse() as response:
+                            status, raw = response.status, response.read()
+                            content_type = response.headers.get("Content-Type", "")
+                    else:
+                        try:
+                            with opener.open(req, timeout=10) as response:
+                                status, raw = response.status, response.read()
+                                content_type = response.headers.get("Content-Type", "")
+                        except urllib.error.HTTPError as error:
+                            status, raw = error.code, error.read()
+                            content_type = error.headers.get("Content-Type", "")
+                    if child.poll() is not None:
+                        raise RuntimeError("owned server exited during HTTP request")
+                    if status != expected:
+                        raise RuntimeError(f"{path}: expected HTTP {expected}, received HTTP {status}")
+                    print(f"PASS {method or ('POST' if body else 'GET')} {path} HTTP {expected}", flush=True)
+                    return json.loads(raw) if "json" in content_type else raw
+
+                def verify_identity(connection=None):
+                    event = raw_request("/api/events/get", {"public_id": identity_id}, method="GET", connection=connection)
+                    if not isinstance(event, dict) or event.get("public_id") != identity_id or event.get("name") != identity_name:
+                        raise RuntimeError("owned database identity mismatch; refusing test writes")
+
+                def request(path, data=None, method=None, expected=200):
+                    effective_method = method or ("POST" if data is not None else "GET")
+                    if effective_method not in ("GET", "HEAD"):
+                        with closing(BoundHTTPConnection("127.0.0.1", port, timeout=10)) as connection:
+                            verify_identity(connection)
+                            return raw_request(path, data, method, expected, connection)
+                    return raw_request(path, data, method, expected)
+
+                deadline = time.monotonic() + 20
+                while True:
+                    try:
+                        request("/")
+                        break
+                    except (urllib.error.URLError, TimeoutError):
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("owned server did not become ready") from None
+                        time.sleep(0.2)
+
+                verify_identity()
+                if "--shutdown-probe" in sys.argv:
+                    print("shutdown_probe_ready=" + json.dumps({"server_pid": child.pid, "temp": str(directory)}), flush=True)
+                    while True:
+                        time.sleep(1)
+
+                def get_event(public_id):
+                    # Dioxus 0.7.10's generated JSON extractor reads a body, including GET.
+                    return request("/api/events/get", {"public_id": public_id}, method="GET")
+
+                for public_id in public_ids:
+                    check(get_event(public_id)["public_id"] == public_id, "migrated event readable")
+
+                def post(path, value, expected=200):
+                    return request(path, {"input": value}, expected=expected)
+
+                created = post("/api/events/create", {
+                    "name": "Migration runtime verification", "organizer_note": "Disposable database only",
+                    "time_zone": "Asia/Tokyo", "candidates": [
+                        {"local_date": "2026-09-12", "local_time": "19:00"},
+                        {"local_date": "2026-09-13", "local_time": "19:00"}]})
+                event = created["event"]
+                public_id = event["public_id"]
+                authority = {"event_public_id": public_id, "organizer_capability": created["organizer_capability"]}
+                check(get_event(public_id)["name"] == event["name"], "created event persisted")
+                answer = {"event_public_id": public_id, "response_capability": secrets.token_hex(32),
+                          "response": {"respondent_name": "Verification participant", "availabilities": [
+                              {"candidate_id": candidate["id"], "availability": choice}
+                              for candidate, choice in zip(event["candidates"], ["available", "maybe"])]}}
+                matrix = post("/api/answers/submit", answer)
+                check(matrix["responses"][0]["respondent_name"] == "Verification participant", "response persisted")
+                post("/api/answers/comment", {"event_public_id": public_id,
+                     "response_capability": answer["response_capability"], "comment": "Saved after migration"})
+                summary = post("/api/organizer/events/summary", authority)
+                check(summary["response_count"] == 1 and summary["comment_count"] == 1, "summary matches saved response and comment")
+                matrix = post("/api/organizer/events/matrix", authority)
+                check(matrix["responses"][0]["availabilities"] == ["available", "maybe"], "matrix matches choices")
+                post("/api/organizer/events/summary", {**authority, "organizer_capability": secrets.token_hex(32)}, 404)
+                candidate_id = event["candidates"][0]["id"]
+                post("/api/organizer/events/decision", {**authority, "candidate_id": candidate_id})
+                check(get_event(public_id)["decision"]["candidate_id"] == candidate_id, "decision persisted")
+                calendar = request(f"/api/events/{public_id}/calendar.ics")
+                check(b"BEGIN:VCALENDAR" in calendar and b"BEGIN:VEVENT" in calendar, "calendar download contains event")
+                post("/api/answers/submit", {**answer, "response_capability": secrets.token_hex(32)}, 409)
+            finally:
+                if child is not None:
+                    if child.poll() is None:
+                        child.terminate()
+                        try:
+                            child.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait()
+                    check(child.poll() is not None, "owned server stopped")
+                check(database_files(SOURCE) == source_state, "original database and sidecar files unchanged")
+    print("runtime_verification=PASS", flush=True)
+
+
+def main():
+    publishing_resource = False
+    pending_signal = None
+
+    def terminate(signum, _frame):
+        nonlocal pending_signal
+        if publishing_resource:
+            if pending_signal is None:
+                pending_signal = signum
+            return
+
+        # Let the existing finally and TemporaryDirectory context unwind once.
+        for termination_signal in (signal.SIGTERM, signal.SIGINT):
+            signal.signal(termination_signal, signal.SIG_IGN)
+        raise SystemExit(128 + signum)
+
+    @contextmanager
+    def defer_termination():
+        nonlocal publishing_resource
+        publishing_resource = True
+        try:
+            yield
+        finally:
+            publishing_resource = False
+            if pending_signal is not None:
+                terminate(pending_signal, None)
+
+    previous = {sig: signal.signal(sig, terminate) for sig in (signal.SIGTERM, signal.SIGINT)}
+    try:
+        verify(defer_termination)
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+if __name__ == "__main__":
+    main()

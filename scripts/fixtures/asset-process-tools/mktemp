@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Pause the original shell checker after directory creation, before publication."""
+import json
+import os
+from pathlib import Path
+import tempfile
+import time
+
+directory = tempfile.mkdtemp(prefix="tsunoru-calendar-assets.", dir=os.environ["TMPDIR"])
+print(directory, flush=True)
+probe = Path(os.environ["TSUNORU_ASSET_TEST_PROBE"])
+probe.write_text(json.dumps({"directory": directory}))
+deadline = time.monotonic() + 5
+while not probe.with_suffix(".release").exists() and time.monotonic() < deadline:
+    time.sleep(0.01)

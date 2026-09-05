@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""Use a fresh real-server database to test verifier SIGTERM/SIGINT cleanup."""
+import importlib.util
+import itertools
+import json
+import os
+from pathlib import Path
+import selectors
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+
+from verification_harness import Harness
+
+H = Harness()
+ROOT = Path(__file__).resolve().parents[1]
+SPEC = importlib.util.spec_from_file_location("runtime_verifier", ROOT / "scripts/verify-runtime.py")
+VERIFIER = importlib.util.module_from_spec(SPEC)
+sys.dont_write_bytecode = True
+SPEC.loader.exec_module(VERIFIER)
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+
+
+def seed(root, owner):
+    (root / "var").mkdir()
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("DIOXUS_", "TSUNORU_"))}
+    env.update(IP="127.0.0.1", PORT=str(port))
+    child = owner.popen([str(VERIFIER.BINARY)], cwd=root, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        request = urllib.request.Request(f"http://127.0.0.1:{port}/api/events/get", data=json.dumps({"public_id": "00000000-0000-0000-0000-000000000000"}).encode(), method="GET", headers={"Content-Type": "application/json"})
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        for _ in range(100):
+            try:
+                with opener.open(request, timeout=1) as response:
+                    assert response.status == 200
+                return
+            except urllib.error.URLError:
+                assert child.poll() is None
+                time.sleep(0.1)
+        raise RuntimeError("fixture server did not become ready")
+    finally:
+        owner.stop(child)
+
+
+def test_signals():
+    for phase, sig in itertools.product(("directory", "publication", "ready"), (signal.SIGTERM, signal.SIGINT)):
+        with H.temporary_directory(prefix="runtime-signal-test-") as tmp:
+            root = Path(tmp)
+            seed(root, H)
+            runner = H.popen([sys.executable, __file__, "--worker", str(root), "--shutdown-probe", f"--{phase}-probe"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            info = None
+            try:
+                output = b""
+                with selectors.DefaultSelector() as selector:
+                    selector.register(runner.stdout, selectors.EVENT_READ)
+                    deadline = time.monotonic() + 30
+                    while info is None and time.monotonic() < deadline:
+                        for key, _ in selector.select(timeout=1):
+                            chunk = os.read(key.fileobj.fileno(), 65536)
+                            assert chunk, "verifier exited before probe readiness"
+                            output += chunk
+                            for line in output.splitlines():
+                                if line.startswith(b"shutdown_probe_ready="):
+                                    info = json.loads(line.split(b"=", 1)[1])
+                assert info is not None, "verifier probe timed out"
+                runner.send_signal(sig)
+                runner.wait(timeout=15)
+                if info["server_pid"]:
+                    assert not alive(info["server_pid"]), f"{sig.name}: server leaked"
+                assert not Path(info["temp"]).exists(), f"{sig.name}: temporary data leaked"
+                assert runner.returncode == 128 + sig, (sig.name, runner.returncode)
+                print(f"PASS {phase} {sig.name}: owned server and temporary data removed")
+            finally:
+                H.stop(runner)
+                if info and info["server_pid"] and alive(info["server_pid"]):
+                    os.kill(info["server_pid"], signal.SIGKILL)
+                runner.stdout.close()
+    with H.temporary_directory(prefix="runtime-normal-test-") as tmp:
+        root = Path(tmp)
+        seed(root, H)
+        H.run([sys.executable, __file__, "--worker", str(root)], check=True)
+
+
+if __name__ == "__main__":
+    if "--worker" in sys.argv:
+        VERIFIER.ROOT = Path(sys.argv[2])
+        VERIFIER.SOURCE = VERIFIER.ROOT / "var/tsunoru.sqlite3"
+        def pause_before_publication(info):
+            received = False
+            handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
+
+            def track(sig, frame):
+                nonlocal received
+                received = True
+                handlers[sig](sig, frame)
+
+            try:
+                for sig in handlers:
+                    signal.signal(sig, track)
+                print("shutdown_probe_ready=" + json.dumps(info), flush=True)
+                deadline = time.monotonic() + 10
+                while not received:
+                    assert time.monotonic() < deadline, "publication probe did not receive signal"
+                    time.sleep(0.01)
+            finally:
+                for sig, handler in handlers.items():
+                    signal.signal(sig, handler)
+
+        if "--directory-probe" in sys.argv:
+            real_mkdtemp = tempfile.mkdtemp
+
+            def directory_probe(*args, **kwargs):
+                directory = real_mkdtemp(*args, **kwargs)
+                pause_before_publication({"server_pid": None, "temp": directory})
+                return directory
+
+            VERIFIER.tempfile.mkdtemp = directory_probe
+        if "--publication-probe" in sys.argv:
+            real_popen = subprocess.Popen
+
+            class PublicationProbe(real_popen):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    pause_before_publication({"server_pid": self.pid, "temp": str(kwargs["cwd"])})
+
+            VERIFIER.subprocess.Popen = PublicationProbe
+        VERIFIER.main()
+    else:
+        with H:
+            test_signals()
