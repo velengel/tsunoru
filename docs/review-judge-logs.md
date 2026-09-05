@@ -1,5 +1,18 @@
 # レビュー判断履歴
 
+## PR #8 小実験のローカルレビュー
+
+2026-09-05。[PR #8](https://github.com/velengel/tsunoru/pull/8)。既存R018/R019/R023とコードを照合し、以下を一括判断した。
+GitHubレビューコメントではなく、実験実装のローカル判断である。hosted指摘は確認時0件。
+
+| ID | 判断 | 理由と証拠 |
+| --- | --- | --- |
+| R025 | 修正 | domain共有時にserver featureを外すと未知timezoneを受け入れる。featureを有効化し、workerdで未知zone拒否を検証した |
+| R026 | 修正 | raw Wasm/D1試験をFullstack認証の成功と誤読しないよう、JS入口、合成schema/session、32-bit fingerprint、未検証のCookie/PHC/CPU課金を明記した |
+| R027 | 今回採用しない | Dioxus依存のforkや全面TypeScript化は小実験の目的を超える。serverの実ビルド失敗とbrowser PASSを残して別判断にする |
+
+実行結果、修正ファイル、再現方法は[結果](reports/0023-cloudflare-runtime-spike.md)と[HTTP検証](../experiments/cloudflare/verify.mjs)を参照。
+
 ## PR #7 公開計画の敵対的検証1往復
 
 2026-09-05。[PR #7](https://github.com/velengel/tsunoru/pull/7)の初版[ dcae200 ](https://github.com/velengel/tsunoru/commit/dcae200)を対象に、原目的から過剰実装と公開事故の両方を検討した。
