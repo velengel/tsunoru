@@ -1,6 +1,6 @@
 # Story 0018: iCloud未実体化によるGit停止を作業前に防ぐ
 
-Status: in progress
+Status: complete
 
 Date: 2026-09-02
 
@@ -46,7 +46,7 @@ PC全体のCloudDocs状態には、別repositoryの `.codex/worktree` を含む�
 - [x] 調査で増やしたFinder windowを閉じ、既存UIを保持したことを確認する。
 - [x] Finder調査の開始前記録と終了後cleanupを共有ルールと運用testへ追加する。
 - [x] focused test、syntax、秘密情報検査を確認する。
-- [ ] preflightがPASSした後、Git状態を確認してcommitする。
+- [x] preflightがPASSした後、Git状態を確認してcommitする。
 - [x] 検証記録とSurprise & Discoveryを更新する。
 
 ## concern

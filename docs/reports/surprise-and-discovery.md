@@ -476,3 +476,67 @@ GUI調査は開始前のwindow ID、target、bounds、情報・詳細panelを記
 
 今回のqueueには別repositoryの`.codex/worktree`、Git object、source fileが大量に並び、約49分間`needs-sync-up`のままだった。
 共通Git directoryをローカルに保つだけでなく、linked worktreeの作成先もFile Provider domain外へ出す必要がある。
+
+## 履歴なしsnapshotはtreeの同一性をhashで証明できる
+
+既存履歴を捨てる移行では、file copyだけを見ると、公開treeが元の検証済みtreeと同じか判断しにくい。
+今回、`git archive`でtracked fileだけを展開し、root commit前の`git write-tree`と移行元commitのtree objectを比較したところ、両方が`01bc701bccf78a2714e2f7b89ac9d6ade47e202a`で一致した。
+
+commit履歴を引き継がなくても、file内容、path、実行bitを含むtree objectは照合できる。
+履歴なし移行では、公開前のsecret scanとtree hash比較を別の証拠として残す必要がある。
+
+## 空repositoryへの最初のmain pushは通常のPR gateを通せない
+
+公開用repositoryにはdefault branchがなく、PRのbaseにできるbranchもなかった。
+一方、Codexの実行環境はmainへの直接pushを実行前に拒否したため、利用者が検証済みstaging repositoryから最初の一回だけpushした。
+
+GitHubでdefault branchがmainになり、remote HEADがroot commit`351bddffddd873d9b95ef55d7a7cad17b86fe8b8`と一致することを再確認した。
+空repositoryの初期化だけは、通常のfeature branchとPRによる更新とは別の移行境界になる。
+
+## remote commitから作るlocal branchは追跡設定を別に確認する
+
+`create-feature-worktree.zsh`へremote branchをstart pointとして渡すと、branchとworktreeは期待したcommitで作られたが、upstreamは自動設定されなかった。
+作成後のbranch、HEAD、clean status、lock不在だけでは、次回push先まで決まった証拠にならない。
+
+移行後に`git branch --set-upstream-to`を実行し、`git branch -vv`で同名remote branchの追跡を確認した。
+既存remote branchをrepository内worktreeへ復元するときは、upstreamを独立した検証項目にする。
+
+## commitしなかったstage内容もlocal Git objectに残る
+
+移行reportを最初にstageした後、個人absolute pathを`$HOME`表記へ直して再stageした。
+最終fileと公開commitには個人absolute pathがなかったが、最初にstageした内容は到達不能blobとして新しい正本のobject storeに残っていた。
+
+`git fsck --unreachable --no-reflogs`で他の到達不能objectがないことを確認し、対象blobをpruneした。
+公開前scanはcommitとremoteへの混入を防ぐが、local object storeまで消すものではない。
+秘密情報や公開しない個人情報を一度stageした場合は、到達可能履歴とは別にunreachable objectも確認する必要がある。
+
+## WAL modeのDB本体だけではreadonly openできない場合がある
+
+停止中のSQLiteはWALが0 byteだったため、DB本体だけを新配置へ複製した。
+DB checksumは一致したが、SQLite CLIの`-readonly` openは、WALとSHMがない状態でexit code 14になった。
+
+`immutable=1`のreadonly URIではintegrity checkが`ok`だった。
+書込可能な通常openも`ok`となり、0 byteのWALと32 KiBのSHMを再生成したが、DB本体のchecksumは変わらなかった。
+WAL modeのlocal stateをDB本体だけで復元するときは、破損と判断する前にreadonly接続方式と一時file再生成を分けて確認する必要がある。
+
+## 削除中にもsystem metadataは作られる
+
+旧iCloud rootの`rm -rf`は約29 GiBを削除した後、空にしたはずの複数directoryを`Directory not empty`として残した。
+残っていたのは、削除開始後の時刻を持つ`.DS_Store`が5file、44 KiBだけだった。
+
+process一覧と`lsof`にはCargo、Dioxus、Gitによる旧pathへの書込みがなかった。
+どのmacOS componentが作ったかは特定できないため、FinderまたはFile Providerのどちらかへ原因を限定していない。
+
+一回目の削除失敗だけを再実行の根拠にせず、残存fileとprocessを読み直した。
+source、Git履歴、利用者dataが残っていないことを確認した後、同じrootを削除してpath不在を確認した。
+
+## Post-migration runtime checks can own disposable data
+
+On 2026-09-05, automatic review rejected an ad-hoc temporary lifecycle script and recommended a repository-scoped script.
+The reviewed replacement, `scripts/verify-runtime.py`, owns a loopback server and a disposable SQLite backup, then checks the original SQL dump and database hash.
+It passed review and the full anonymous HTTP lifecycle without broadening global permissions.
+This session's approval does not establish a general allow rule.
+
+A plain query-string call to `get_public_event` returned a missing-field HTTP 500.
+The installed Dioxus 0.7.10 JSON extractor reads the argument body, including for GET; the matching request returned HTTP 200 for the migrated data.
+See [the runtime report](0018-post-migration-runtime-verification.md) and [ADR 0026](../ADR/0026-isolate-runtime-verification.md).
