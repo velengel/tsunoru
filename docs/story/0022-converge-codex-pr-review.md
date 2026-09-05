@@ -55,3 +55,8 @@ Reproduce termination during a stalled checker, then own and terminate its subpr
 Codex discussion_r3939552354 requires bounded browser cleanup while launch is pending.
 Reproduce a launch promise that never settles with SIGTERM and SIGINT, then bound the wait so server and temporary-directory cleanup still run.
 A cleanup timeout must be reported as failure rather than a successful shutdown.
+
+## Python child publication follow-up
+
+Codex discussion_r3939580165 requires deferring termination while Popen creates and publishes the owned server.
+Reproduce signals after the real child exists but before its constructor returns, then deliver deferred termination only after the cleanup variable holds that child.

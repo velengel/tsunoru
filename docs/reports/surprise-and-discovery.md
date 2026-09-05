@@ -601,3 +601,9 @@ See [the source-backed configuration record](0020-codex-review-configuration.md)
 The new repository review rule exposed an untested interval before Chromium launch resolves.
 A never-settling launch promise and an actual unresponsive process now have dedicated signal regressions.
 A bounded cleanup wait allows the owned server and disposable database to be reclaimed even when browser startup fails; the runner reports failure rather than claiming successful cleanup.
+
+## A subprocess can exist before its cleanup handle is assigned
+
+Python signal handlers can interrupt a Popen constructor after it starts the server.
+Deferring the termination action until assignment closes this ownership gap without passing blocked signal masks into the child.
+The regression now observes both pre-publication and ready-state termination of a real server.

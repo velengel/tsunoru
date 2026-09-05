@@ -124,3 +124,14 @@ The installed Playwright 1.62.0 process launcher also registers an exit handler 
 The API timeout is documented in [Playwright BrowserType.launch](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-option-timeout).
 
 The normal 320px/1440px browser flow, stale-CSS negative control, syntax checks and public-snapshot boundary check passed again after this change.
+
+## Python child publication follow-up
+
+[Codex discussion_r3939580165](https://github.com/velengel/tsunoru/pull/6#discussion_r3939580165) requires a change: SIGINT/SIGTERM could raise SystemExit after Popen created a child but before the verifier assigned its cleanup handle.
+The regression wraps the real Popen constructor, announces the owned PID before returning, and waits until a signal is received; the pre-fix run failed with `SIGTERM: server leaked`.
+The verifier now defers the Python termination action across child construction and assignment, then processes the recorded signal while the child is reachable by finally.
+This avoids changing OS signal masks that a new server could inherit.
+
+All four Python cases passed (publication and ready phases, each with SIGTERM and SIGINT), including server exit, disposable-directory removal and the expected signal exit status.
+The same isolated fixture suite passed the normal HTTP lifecycle and unchanged source-database checks; syntax and diff checks also passed.
+Self-review confirmed that deferred termination is released on both normal and exceptional exits and that signal handlers are restored when main returns.

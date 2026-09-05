@@ -6,6 +6,7 @@ Requires: dx build --web (or a completed dx serve --web build).
 Only the child server receives test writes. No credentials are printed or saved.
 """
 
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -33,7 +34,7 @@ def check(condition, message):
     print(f"PASS {message}", flush=True)
 
 
-def verify():
+def verify(defer_termination):
     check(BINARY.is_file(), "built server exists")
     check(SOURCE.is_file(), "original database exists")
     original_hash = hashlib.sha256(SOURCE.read_bytes()).digest()
@@ -58,8 +59,10 @@ def verify():
         with (directory / "server.log").open("w") as log:
             child = None
             try:
-                child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
-                                         stdout=log, stderr=subprocess.STDOUT)
+                # Publish ownership before a deferred signal can unwind cleanup.
+                with defer_termination():
+                    child = subprocess.Popen([str(BINARY)], cwd=directory, env=env,
+                                             stdout=log, stderr=subprocess.STDOUT)
                 def request(path, data=None, method=None, expected=200):
                     if child.poll() is not None:
                         raise RuntimeError("owned server exited; refusing HTTP requests")
@@ -148,15 +151,35 @@ def verify():
 
 
 def main():
+    publishing_child = False
+    pending_signal = None
+
     def terminate(signum, _frame):
+        nonlocal pending_signal
+        if publishing_child:
+            if pending_signal is None:
+                pending_signal = signum
+            return
+
         # Let the existing finally and TemporaryDirectory context unwind once.
         for termination_signal in (signal.SIGTERM, signal.SIGINT):
             signal.signal(termination_signal, signal.SIG_IGN)
         raise SystemExit(128 + signum)
 
+    @contextmanager
+    def defer_termination():
+        nonlocal publishing_child
+        publishing_child = True
+        try:
+            yield
+        finally:
+            publishing_child = False
+            if pending_signal is not None:
+                terminate(pending_signal, None)
+
     previous = {sig: signal.signal(sig, terminate) for sig in (signal.SIGTERM, signal.SIGINT)}
     try:
-        verify()
+        verify(defer_termination)
     finally:
         for sig, handler in previous.items():
             signal.signal(sig, handler)
