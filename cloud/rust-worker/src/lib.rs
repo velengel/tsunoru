@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use worker::*;
 
 #[derive(Deserialize)]
@@ -7,13 +8,23 @@ struct NewEvent {
     name: String,
     organizer_capability: String,
     response_capability: String,
+    candidates: Vec<CandidateInput>,
+}
+#[derive(Deserialize)]
+struct CandidateInput {
+    id: String,
+    label: String,
 }
 
 #[derive(Deserialize)]
 struct NewAnswer {
     event_id: String,
-    respondent: String,
+    response_id: String,
+    candidate_id: String,
     availability: String,
+}
+fn hash(value: &str) -> String {
+    format!("{:x}", Sha256::digest(value.as_bytes()))
 }
 
 #[derive(Serialize)]
@@ -30,15 +41,16 @@ pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response
         })
         .post_async("/api/events", |mut request, ctx| async move {
             let input: NewEvent = request.json().await?;
-            if input.id.is_empty() || input.id.len() > 64 || input.name.trim().is_empty() || input.organizer_capability.len() < 16 || input.response_capability.len() < 16 {
+            if input.id.is_empty() || input.id.len() > 64 || input.name.trim().is_empty() || input.organizer_capability.len() < 16 || input.response_capability.len() < 16 || input.candidates.is_empty() || input.candidates.iter().any(|c| c.id.is_empty() || c.label.trim().is_empty()) {
                 return Response::error("invalid event", 400);
             }
             let db = ctx.env.d1("DB")?;
-            db.batch(vec![
+            let mut statements = vec![
                 db.prepare("INSERT INTO events(id, name, organizer_capability, response_capability) VALUES(?1, ?2, ?3, ?4)")
-                    .bind(&[input.id.clone().into(), input.name.clone().into(), input.organizer_capability.clone().into(), input.response_capability.clone().into()])?,
-            ])
-            .await?;
+                    .bind(&[input.id.clone().into(), input.name.clone().into(), hash(&input.organizer_capability).into(), hash(&input.response_capability).into()])?,
+            ];
+            for candidate in &input.candidates { statements.push(db.prepare("INSERT INTO candidates(event_id, id, label) VALUES(?1, ?2, ?3)").bind(&[input.id.clone().into(), candidate.id.clone().into(), candidate.label.clone().into()])?); }
+            db.batch(statements).await?;
             Response::from_json(&Event {
                 id: input.id,
                 name: input.name,
@@ -47,12 +59,12 @@ pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response
         .post_async("/api/answers", |mut request, ctx| async move {
             let input: NewAnswer = request.json().await?;
             let capability = request.headers().get("x-response-capability")?.ok_or_else(|| Error::RustError("missing capability".into()))?;
-            if input.event_id.is_empty() || input.respondent.trim().is_empty() || input.availability.trim().is_empty() { return Response::error("invalid answer", 400); }
+            if input.event_id.is_empty() || input.response_id.trim().is_empty() || input.candidate_id.trim().is_empty() || !matches!(input.availability.as_str(), "available" | "maybe" | "unavailable") { return Response::error("invalid answer", 400); }
             let db = ctx.env.d1("DB")?;
             let event = db.prepare("SELECT response_capability FROM events WHERE id = ?1").bind(&[input.event_id.clone().into()])?.first::<serde_json::Value>(None).await?;
-            if event.as_ref().and_then(|v| v.get("response_capability")).and_then(|v| v.as_str()) != Some(capability.as_str()) { return Response::error("forbidden", 403); }
-            db.prepare("INSERT INTO answers(event_id, respondent, availability) VALUES(?1, ?2, ?3)").bind(&[input.event_id.clone().into(), input.respondent.clone().into(), input.availability.clone().into()])?.run().await?;
-            Response::from_json(&serde_json::json!({"event_id": input.event_id, "respondent": input.respondent, "availability": input.availability}))
+            if event.as_ref().and_then(|v| v.get("response_capability")).and_then(|v| v.as_str()) != Some(hash(&capability).as_str()) { return Response::error("forbidden", 403); }
+            db.prepare("INSERT INTO answers(event_id, response_id, candidate_id, availability) VALUES(?1, ?2, ?3, ?4) ON CONFLICT(event_id, response_id, candidate_id) DO UPDATE SET availability=excluded.availability").bind(&[input.event_id.clone().into(), input.response_id.clone().into(), input.candidate_id.clone().into(), input.availability.clone().into()])?.run().await?;
+            Response::from_json(&serde_json::json!({"event_id": input.event_id, "response_id": input.response_id, "candidate_id": input.candidate_id, "availability": input.availability}))
         })
         .run(request, env)
         .await

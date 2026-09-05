@@ -14,8 +14,8 @@ PR #8でRust WorkerとD1のローカル成立性を確認した。次は本番�
 
 ## to do
 
-- [ ] API契約と認証境界のADRを作成する。
-- [ ] WorkerのD1 schema、capability、イベント作成、匿名回答を実装する。
+- [x] API契約と認証境界のADRを作成する。
+- [x] WorkerのD1 schema、capability、イベント作成、匿名回答を実装する。
 - [ ] Dioxus UIをWorker APIへ接続する。
 - [ ] 分離fixtureを使ったWorker/browser検証を追加する。
 - [ ] self-reviewと判断ログを更新し、PRをreadyにする。
