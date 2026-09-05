@@ -165,6 +165,16 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 - 履歴：R013の所有資源スコープを、親プロセスの終了後も残るグループへ適用します。完了した回収処理は再実行せず、終了した親の回収とグループ状態の確認を区別します。[ADR 0042](ADR/0042-reclaim-owned-process-groups-through-completion.md)に判断を記録します。
 
 ## 今回からのまとめ方
+### R017 Linuxコンテナでの終了済みプロセス判定（保留）
+
+- 指摘：[3939968590](https://github.com/velengel/tsunoru/pull/6#discussion_r3939968590)
+- 判断：今回は保留。報告は、孫プロセスを回収しないPID 1を持つLinuxコンテナで、ゾンビを残存と判定して検証ツールが失敗するものです。アプリ本体の不具合ではなく、元の目的である移行後のmacOS動作確認とカレンダー修正は検証済みです。Linux対応の追加実装を今このPRで続ける必要性は低いと判断します。
+- 状態：ユーザーの作業終了指示と2往復上限に従い、追加実装・再レビューは行いません。未修正のスレッドとして残します。
+- 検証：macOSの既存確認はPASS。Linuxコンテナの再現は今回のレビュー報告によるもので、ローカル再検証は未実施です。
+- 修正：未実施。Linuxでこの検証ツールを使う必要が生じた際の別作業候補です。
+- 履歴：[ADR 0043](ADR/0043-stop-review-follow-up-after-two-rounds.md)に基づく停止時の保留判断です。R016のmacOSでの検証結果と、今回のLinux条件の報告を区別します。
+
+## レビュー対応の停止
 
 The user subsequently stopped this loop and set a two-round limit. [ADR 0043](ADR/0043-stop-review-follow-up-after-two-rounds.md) supersedes indefinite convergence: assess relevance and impact, record defer/no-change decisions where justified, and stop after two rounds with a merge-decision report. The current loop ends without another review request; an already running review is reported as pending rather than awaited indefinitely.
 
