@@ -4,6 +4,11 @@
 
 ## 提案と前提
 
+**更新: ユーザーの既存Cloudflare運用を優先する条件により、第一候補をWorkers＋D1へ変更した。**
+現在の評価順と次の実験は[比較追補](0022-cloudflare-existing-project-comparison.md)と[ADR 0045](../ADR/0045-prioritize-existing-cloudflare-operations.md)を正とする。
+以下のRender第一候補、native配布実験、disk backupの記述は初版時の比較案として残す。
+共通の公開前安全条件は維持し、Cloudflare向けの保存/配布方式は追補に従う。
+
 最初の候補は、既存Dioxusサーバーを有料の小規模ホストで動かし、SQLiteを永続ディスクに置く構成とする。
 候補サービスはRenderとし、契約前に下記の試験を通す。
 Cloudflareだけで完結させる場合はWorkers Static AssetsとD1への移植を別途評価する。
