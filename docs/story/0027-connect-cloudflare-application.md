@@ -7,7 +7,8 @@
 
 ## definition of done
 
-- [ ] Rust Workerからhealth、イベント作成、匿名回答をD1へ接続する。
+- [x] Rust Workerからhealth、イベント作成をD1へ接続する最小実装を作る。
+- [ ] 匿名回答をD1へ接続する。
 - [ ] 既存Dioxus画面から登録、login、作成、匿名回答、主催確認を段階的にD1へ接続する。
 - [ ] 公開projectionと主催capability、回答capability、sessionの認可を守る。
 - [ ] local API負例とbrowser導線、Cloudflare上の動作を区別して記録する。
