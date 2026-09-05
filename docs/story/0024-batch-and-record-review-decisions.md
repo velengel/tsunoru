@@ -28,3 +28,8 @@ The latest completed review adds two isolation findings to assess together.
 A review prompt cannot guarantee that Codex discovers all defects in one pass.
 Previously rejected or fixed findings may need reassessment when new evidence appears.
 The log must not be used to suppress fresh findings or to misrepresent an old head's review as current.
+
+## Temporary-directory publication follow-up
+
+Review 3939721392 identifies the same ownership-publication gap in TemporaryDirectory construction.
+Add directory creation to the signal regression, reuse termination deferral while registering cleanup, and record its judgment and commit-linked reply in the next batch.

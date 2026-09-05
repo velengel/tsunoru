@@ -630,3 +630,8 @@ SQL inspection now runs only against a byte-stable disposable snapshot, includin
 The user requested a dedicated judgment log and commit-linked completion replies.
 The current batch groups related isolation findings and cross-checks both verifiers, rather than triggering another review after each fix.
 The log retains earlier reasoning and links while allowing reassessment when current evidence changes.
+
+## TemporaryDirectory publishes cleanup after creating the path
+
+Python's TemporaryDirectory can be interrupted after mkdtemp creates a path but before its finalizer is installed.
+Deferring termination through ExitStack registration covers that interval and keeps later snapshot and database work inside an already-owned cleanup scope.

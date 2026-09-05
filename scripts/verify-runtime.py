@@ -6,7 +6,7 @@ Requires: dx build --web (or a completed dx serve --web build).
 Only the child server receives test writes. No credentials are printed or saved.
 """
 
-from contextlib import closing, contextmanager
+from contextlib import ExitStack, closing, contextmanager
 import hashlib
 import json
 import os
@@ -65,7 +65,10 @@ def snapshot_source(database, destination):
 def verify(defer_termination):
     check(BINARY.is_file(), "built server exists")
     check(SOURCE.is_file(), "original database exists")
-    with tempfile.TemporaryDirectory(prefix="runtime-check-", dir=ROOT / "var") as tmp:
+    with ExitStack() as resources:
+        # Register cleanup before a signal can interrupt publication of the path.
+        with defer_termination():
+            tmp = resources.enter_context(tempfile.TemporaryDirectory(prefix="runtime-check-", dir=ROOT / "var"))
         directory = Path(tmp)
         (directory / "var").mkdir()
         snapshot = directory / "source/tsunoru.sqlite3"
@@ -197,12 +200,12 @@ def verify(defer_termination):
 
 
 def main():
-    publishing_child = False
+    publishing_resource = False
     pending_signal = None
 
     def terminate(signum, _frame):
         nonlocal pending_signal
-        if publishing_child:
+        if publishing_resource:
             if pending_signal is None:
                 pending_signal = signum
             return
@@ -214,12 +217,12 @@ def main():
 
     @contextmanager
     def defer_termination():
-        nonlocal publishing_child
-        publishing_child = True
+        nonlocal publishing_resource
+        publishing_resource = True
         try:
             yield
         finally:
-            publishing_child = False
+            publishing_resource = False
             if pending_signal is not None:
                 terminate(pending_signal, None)
 

@@ -60,11 +60,11 @@ def seed(root):
 
 
 def test_signals():
-    for phase, sig in itertools.product(("publication", "ready"), (signal.SIGTERM, signal.SIGINT)):
+    for phase, sig in itertools.product(("directory", "publication", "ready"), (signal.SIGTERM, signal.SIGINT)):
         with tempfile.TemporaryDirectory(prefix="runtime-signal-test-") as tmp:
             root = Path(tmp)
             seed(root)
-            runner = subprocess.Popen([sys.executable, __file__, "--worker", str(root), "--shutdown-probe", "--publication-probe" if phase == "publication" else "--ready-probe"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            runner = subprocess.Popen([sys.executable, __file__, "--worker", str(root), "--shutdown-probe", f"--{phase}-probe"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             info = None
             try:
                 output = b""
@@ -82,7 +82,8 @@ def test_signals():
                 assert info is not None, "verifier probe timed out"
                 runner.send_signal(sig)
                 runner.wait(timeout=15)
-                assert not alive(info["server_pid"]), f"{sig.name}: server leaked"
+                if info["server_pid"]:
+                    assert not alive(info["server_pid"]), f"{sig.name}: server leaked"
                 assert not Path(info["temp"]).exists(), f"{sig.name}: temporary data leaked"
                 assert runner.returncode == 128 + sig, (sig.name, runner.returncode)
                 print(f"PASS {phase} {sig.name}: owned server and temporary data removed")
@@ -90,7 +91,7 @@ def test_signals():
                 if runner.poll() is None:
                     runner.kill()
                     runner.wait()
-                if info and alive(info["server_pid"]):
+                if info and info["server_pid"] and alive(info["server_pid"]):
                     os.kill(info["server_pid"], signal.SIGKILL)
                 runner.stdout.close()
     with tempfile.TemporaryDirectory(prefix="runtime-normal-test-") as tmp:
@@ -103,31 +104,43 @@ if __name__ == "__main__":
     if "--worker" in sys.argv:
         VERIFIER.ROOT = Path(sys.argv[2])
         VERIFIER.SOURCE = VERIFIER.ROOT / "var/tsunoru.sqlite3"
+        def pause_before_publication(info):
+            received = False
+            handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
+
+            def track(sig, frame):
+                nonlocal received
+                received = True
+                handlers[sig](sig, frame)
+
+            try:
+                for sig in handlers:
+                    signal.signal(sig, track)
+                print("shutdown_probe_ready=" + json.dumps(info), flush=True)
+                deadline = time.monotonic() + 10
+                while not received:
+                    assert time.monotonic() < deadline, "publication probe did not receive signal"
+                    time.sleep(0.01)
+            finally:
+                for sig, handler in handlers.items():
+                    signal.signal(sig, handler)
+
+        if "--directory-probe" in sys.argv:
+            real_mkdtemp = tempfile.mkdtemp
+
+            def directory_probe(*args, **kwargs):
+                directory = real_mkdtemp(*args, **kwargs)
+                pause_before_publication({"server_pid": None, "temp": directory})
+                return directory
+
+            VERIFIER.tempfile.mkdtemp = directory_probe
         if "--publication-probe" in sys.argv:
             real_popen = subprocess.Popen
 
             class PublicationProbe(real_popen):
                 def __init__(self, *args, **kwargs):
                     super().__init__(*args, **kwargs)
-                    received = False
-                    handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
-
-                    def track(sig, frame):
-                        nonlocal received
-                        received = True
-                        handlers[sig](sig, frame)
-
-                    try:
-                        for sig in handlers:
-                            signal.signal(sig, track)
-                        print("shutdown_probe_ready=" + json.dumps({"server_pid": self.pid, "temp": str(kwargs["cwd"])}), flush=True)
-                        deadline = time.monotonic() + 10
-                        while not received:
-                            assert time.monotonic() < deadline, "publication probe did not receive signal"
-                            time.sleep(0.01)
-                    finally:
-                        for sig, handler in handlers.items():
-                            signal.signal(sig, handler)
+                    pause_before_publication({"server_pid": self.pid, "temp": str(kwargs["cwd"])})
 
             VERIFIER.subprocess.Popen = PublicationProbe
         VERIFIER.main()

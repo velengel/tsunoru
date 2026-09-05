@@ -178,3 +178,14 @@ This requires a quiescent source and is not an arbitrary live-backup guarantee; 
 Batch verification passed: Node shutdown 14 cases under the portable-tool fixture, Python shutdown four cases plus normal HTTP lifecycle, both wrong-database tests, WAL snapshot preservation, 320px/1440px browser flow, stale-CSS negative control, syntax and public-snapshot boundary checks.
 Application Rust/CSS did not change in this batch; the previously recorded Rust tests, clippy, fmt and web build remain the application-code evidence.
 Self-review checked related failure phases in both verifiers, the source sidecars and WAL-only data, request deadlines, child-liveness guards, migration metadata, and the new documentation's scope.
+
+## Temporary-directory publication follow-up
+
+[Review 3939721392](https://github.com/velengel/tsunoru/pull/6#discussion_r3939721392) requires extending Python termination deferral to temporary-directory creation.
+TemporaryDirectory installs its finalizer after mkdtemp returns, so the pre-fix signal test reproduced a leftover directory before the with block could own it.
+An ExitStack now owns the cleanup registration before deferred termination is released.
+The same termination guard covers both directory and child publication; later snapshot, file and database work stays inside the registered directory cleanup scope.
+
+The expanded Python regression passed six cases: directory creation, child publication and ready state, each with SIGTERM and SIGINT.
+Normal HTTP operation, wrong-database rejection and WAL-only source preservation also passed after this change.
+The unchanged Node regression remains the separately recorded 14-case evidence.
