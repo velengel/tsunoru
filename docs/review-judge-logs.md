@@ -5,7 +5,9 @@
 2026-09-05。[PR #7](https://github.com/velengel/tsunoru/pull/7)の初版[ dcae200 ](https://github.com/velengel/tsunoru/commit/dcae200)を対象に、原目的から過剰実装と公開事故の両方を検討した。
 R017および既存の権限保護ルールを参照したうえで、ローカル検証1回と計画修正1回で停止する。
 以下はローカルでまとめた指摘であり、GitHub上のレビューコメントではない。
-修正版は[公開計画](reports/0021-publication-plan.md#敵対的検証後の補足)。修正commitは `git log -- docs/reports/0021-publication-plan.md` とPRのcommit一覧で追跡できる。
+修正版は[公開計画](reports/0021-publication-plan.md#敵対的検証後の補足)。計画修正commitは[3d48b70](https://github.com/velengel/tsunoru/commit/3d48b70)。
+文書内の相対ファイル参照、差分整形、staged secret scanがPASSでpush済み。
+確認時のPRレビュー/コメント/CIチェックは0件であり、hosted reviewの承認は主張しない。
 
 | ID | 指摘と根拠 | 判断と理由 | 修正後の検証/残件 |
 | --- | --- | --- | --- |

@@ -18,7 +18,7 @@ Cloudflare Pagesなどを候補に、移植量より利用開始までの道筋�
 
 - [x] [公開計画](../reports/0021-publication-plan.md)の初版を作成する。
 - [x] 初版を固定して敵対的検証し、修正版と判断履歴を残す。
-- [ ] 文書の参照と差分を確認してpushする。
+- [x] 文書の参照と差分を確認してpushする（修正commit 3d48b70）。
 
 ## concern
 
