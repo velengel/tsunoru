@@ -138,7 +138,9 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 - 指摘：[3939819165](https://github.com/velengel/tsunoru/pull/6#discussion_r3939819165)
 - 判断：対応が必要。実際のシェルチェッカーではmktempの生成から代入・trap登録までに中断されると、一時ディレクトリが残ります。従来の停止用fixtureでは、この実処理の隙間を検証していませんでした。
-- 状態：実チェッカーで修正前の残存を再現し、一時ファイルを使わない実装へ変更、検証済み。push後にコミットと返信リンクを追記します。
+- 状態：実チェッカーで修正前の残存を再現し、一時ファイルを使わない実装へ変更、検証、push、返信、スレッド解決済み。
+- 修正：[42fffe1](https://github.com/velengel/tsunoru/commit/42fffe19c214279a61a65be894c054723a050878)
+- 返信：[対応しました](https://github.com/velengel/tsunoru/pull/6#discussion_r3939854969)
 - 検証：実チェッカーのSIGTERM／SIGINT、正常CSS、古いCSS、不正Content-Type、HTML目印の欠落がPASS。実ブラウザー320px／1440px、古いCSS検出、ブラウザー中断14ケースもPASS。
 - 履歴：R006の非同期実行と親側の終了処理だけでは、シェル内部の生成途中を覆えませんでした。検証スクリプト内の一時資源生成箇所を再点検し、このチェッカーでは終了処理を増やす代わりにディスクへの保存をなくしました。[ADR 0040](ADR/0040-check-calendar-assets-in-memory.md)に判断を記録します。
 
