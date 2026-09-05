@@ -114,6 +114,16 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 - 検証：WALが残りSHMがない負例で、修正前の元ファイル変更を再現。修正後はWAL内だけのイベントをコピーから読み、元DBと補助ファイルの内容と有無が不変であることを確認。
 - 返信：[対応しました](https://github.com/velengel/tsunoru/pull/6#discussion_r3939699978)
 
+### R012 Python一時ディレクトリの生成中断
+
+- 指摘：[3939721392](https://github.com/velengel/tsunoru/pull/6#discussion_r3939721392)
+- 判断：対応が必要。TemporaryDirectoryのfinalizer登録前にmkdtempが中断されると、まだ終了処理に登録されていないディレクトリが残ります。
+- 状態：生成直後の残存を再現し、修正、検証、push、返信、スレッド解決済み。
+- 修正：[5e9e630](https://github.com/velengel/tsunoru/commit/5e9e630f5eda2eaeda455767ae898135f2524cc4)
+- 検証：ディレクトリ生成、子プロセス代入、起動完了の3段階×2シグナルと、通常HTTP、別DB拒否、WAL復元と元DB不変がPASS。
+- 返信：[対応しました](https://github.com/velengel/tsunoru/pull/6#discussion_r3939738154)
+- 履歴：R008で採用した子プロセスの終了保留を、一時ディレクトリの所有権登録にも拡張しました。以前の必要対応という判断は維持します。
+
 ## 今回からのまとめ方
 
 今回のR010とR011は検証先の隔離という共通の観点で、一つの対応バッチにまとめます。
