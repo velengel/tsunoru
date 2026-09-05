@@ -1,11 +1,29 @@
-name = "tsunoru-rust-worker-spike"
-main = "build/worker/shim.mjs"
-compatibility_date = "2026-08-06"
+name = "tsunoru-staging-api"
+main = "build/index.js"
+compatibility_date = "2026-09-03"
+workers_dev = false
+preview_urls = false
 
 [build]
 command = "worker-build --release"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "tsunoru-spike"
-database_id = "<create-separate-spike-database>"
+database_name = "tsunoru-staging"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[vars]
+APP_ORIGIN = "https://tsunoru-staging.example.test"
+
+[env.staging]
+name = "tsunoru-staging-api"
+workers_dev = false
+preview_urls = false
+
+[env.staging.vars]
+APP_ORIGIN = "https://tsunoru-staging.example.test"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "tsunoru-staging"
+database_id = "00000000-0000-0000-0000-000000000000"

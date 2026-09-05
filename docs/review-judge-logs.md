@@ -1,5 +1,19 @@
 # レビュー判断履歴
 
+## PR #10: #9 の判断を実装から再評価（2026-09-06）
+
+R031、R034–R039 を読んでから `492506e` のコードと native の回答契約を照合した。これは #9 に新しい hosted review を要求するものではない。#10 の受信済み hosted バッチはまだ0回で、最大2往復の上限を引き継ぐ。
+
+| ID | 判断 | 理由と証拠 |
+| --- | --- | --- |
+| R040（R034/R036 再評価） | 修正 | #9 は候補単位の upsert とイベント共通鍵で、全候補回答・回答者間の所有権を保証しなかった。回答単位の hash と全件 batch に置換。`src/api.rs`、HTTP の欠落・重複・同名・同時再送・競合試験で確認 |
+| R041（R031 再評価） | 修正 / 一部保留 | 入口の Bearer と完全一致 Origin を DB 前に検証する。Cookie を使わない API に account/CSRF token を同時実装する必要はない。一般公開の制限・個別失効は [#12](https://github.com/velengel/tsunoru/issues/12) で要否判断 |
+| R042（R038 再評価） | 保留 / 誤適用防止 | 実データを持つ staging DB は未作成で、新規 baseline に限定する。`IF NOT EXISTS` を外し既存表には失敗させる。migration/restore は [#12](https://github.com/velengel/tsunoru/issues/12) へ引き継ぐ |
+| R043（検証の再現性） | 修正 | 別 repo の絶対 import を廃止し lockfile 固定、Miniflare を終了時回収。SIGINT/SIGTERM で所有 workerd と一時データ消滅を実測 |
+| R044（PR本文） | 修正 | #9 でユーザーが要求した本文同期が運用へ未記録だった。ADR 0054 と AGENTS に追加し、最終本文を GitHub から読み戻す |
+
+元の指摘: [候補集合](https://github.com/velengel/tsunoru/pull/9#discussion_r3941003984)、[回答の識別](https://github.com/velengel/tsunoru/pull/9#discussion_r3941003989)、[migration](https://github.com/velengel/tsunoru/pull/9#discussion_r3941003994)。検証の詳細は [report 0027](reports/0027-staging-authorization.md)。commit と hosted review の履歴は push 後に追記する。
+
 ## R034-R039: Codex review for PR #9 (2026-09-06)
 
 - R034（候補日モデル）: **修正**。候補日テーブルと候補日単位の回答キーを追加した。コメント: https://github.com/velengel/tsunoru/pull/9#discussion_r3941003984

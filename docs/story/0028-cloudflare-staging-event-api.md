@@ -23,3 +23,5 @@ PR #8でRust WorkerとD1のローカル成立性を確認した。次は本番�
 ## concern
 
 本番D1、secret、ドメインは変更しない。認証を迂回する公開endpointや、既存SQLiteとの自動同期は今回の範囲外とする。
+
+2026-09-06 再評価: #9 で実装した照合はイベント共通の回答鍵だけで、主催者操作の認可と回答者間の所有権は未検証だった。上の完了チェックをそれらの保証と読まない。全候補の一括保存と個別権限は [Story 0029](0029-authorize-staging-api.md) で実装し、UI と実配置は [#11](https://github.com/velengel/tsunoru/issues/11) へ引き継ぐ。

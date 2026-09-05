@@ -661,6 +661,13 @@ An owned fixture child survived Harness.stop after its parent exited. Cleanup no
 - 主催権限はlocalStorageにあるため、DB移転だけではoriginや端末を越えて引き継がれない。account履歴も主催権限の代わりにならない。
 - backup復元は失効済みsessionや削除を巻き戻し得る。復元後の失効と削除再適用を公開条件へ追加した。
 - 一次資料とコードの根拠、採用しない案、検証1往復の結果は[公開計画](0021-publication-plan.md)と[判断ログ](../review-judge-logs.md)を正とする。
+## 2026-09-06 staging の認証と再送
+
+- #9 の upsert は同じ回答の再送で行を増やさないが、回答者間の所有権も全候補の完了も保証しなかった。個別 capability と payload の一致を別々の条件にした。
+- D1 batch が原子的でも、書込み条件に権限がなければ他人のデータを原子的に書き換えてしまう。条件付き INSERT と同時送信試験で両方を確認した。
+- Miniflare 5 の options は既存の検証コードと互換ではなかった。公式 converter と明示した JS/Wasm modules で新規 checkout から再現できた。
+- 詳細と証拠は [report 0027](0027-staging-authorization.md)、判断の再評価は [R040–R044](../review-judge-logs.md) を参照。
+
 ## 2026-09-05 Cloudflare小実験
 
 Dioxus 0.7.10の最小server構成もmioのWasm非対応で失敗した一方、browser構成はcheckが通った。

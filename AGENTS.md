@@ -16,6 +16,7 @@
 
 - Continue in an existing suitable feature worktree; create a new one only when needed, and explain the reason (ADR 0031).
 - Open a development draft PR before implementation, then record the plan, implement, and converge self-review and fixes (ADR 0032).
+- Before reporting PR ready, update the PR title and body to the final implementation, actual verification results, and outstanding work, then read them back from GitHub (ADR 0054).
 - Inspect Codex review summaries, reviews, and inline threads for the final PR head. For every finding, record whether a change is needed and why.
 - Judge findings against the original goal, concrete impact, reproducibility and correction cost; a review comment does not automatically require a fix. Record fix, defer or no-change decisions with reasons.
 - Limit autonomous review follow-up to two rounds per PR (ADR 0043). One round is one received review batch, triage, necessary fixes and verification. New findings or commits do not reset the count. After two rounds, stop; do not request another review, wait indefinitely, or begin a third round without explicit user instruction. Report severe findings rather than silently overriding the limit.

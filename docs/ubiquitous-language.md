@@ -3,6 +3,20 @@
 この用語集は、Story、ADR、実装、テストで同じ語を同じ意味に保つための正本である。
 未決のプロダクト概念は、要件が決まる前に追加しない。
 
+## staging 入口鍵
+
+- 意味：限定した API 検証者に渡す共有のアクセス資格情報。イベントの主催権限や回答の所有権とは別に検証する。
+- 使われ方：全 `/api/*` で明示送信を要求し、未設定時は閉じる。一般参加者向けのログイン機能には使わない。
+- 避けられないシステム上の同義語：`STAGING_API_TOKEN`、HTTP Bearer token。
+- 参考リンク：[ADR 0051](ADR/0051-gate-staging-api-with-explicit-bearer.md)
+
+## 回答の同内容再送
+
+- 意味：一つの回答 capability に対して、同じイベント・正規化した名前・全候補の選択を再送し、保存済みの回答を返すこと。
+- 使われ方：通信結果が失われた後の再試行で重複を作らず、変更内容は409で拒否する。公開回答 ID は資格情報にならない。
+- 避けられないシステム上の同義語：idempotent replay、`payload_hash`。
+- 参考リンク：[ADR 0052](ADR/0052-save-complete-responses-by-capability.md)
+
 ## TSUNORU
 
 - 同義語：つのる、`tsunoru`。
