@@ -19,7 +19,7 @@
 
 - [x] OIDCの公式仕様と既存native認証・履歴境界を調査する。
 - [x] ADRとStoryで主催者必須・回答者任意の境界を記録する。
-- [x] [理解ゲート](../../.mydocs/260906-google-organizer-auth-understanding-gate.html)を作成する。
+- [x] 実装前の理解ゲートを会話内の2問で行う。HTML教材は作らない。
 - [ ] OIDC開始、callback、ID Token検証、セッション発行を実装する。
 - [ ] organizer API認可と匿名回答の回帰テストを追加する。
 - [ ] Google Cloud Console設定とWorker Secret登録手順を文書化する。
