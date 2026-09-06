@@ -2,6 +2,12 @@ html, body { min-width: 0; }
 .cloud-shell { width: min(100%, 76rem); margin-inline: auto; }
 .cloud-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; min-width: 0; }
 .cloud-header button { min-height: 44px; border: 0; background: transparent; cursor: pointer; }
+.help-button { width: 44px; border: 1px solid currentColor !important; border-radius: 50%; font-size: 1.2rem; }
+.help-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 1rem; background: rgb(20 30 24 / .55); }
+.help-dialog { position: relative; width: min(100%, 34rem); max-height: min(90vh, 42rem); overflow: auto; padding: 2rem; border: 1px solid #9caf9f; border-radius: 1rem; background: #fffdf7; box-shadow: 0 1rem 3rem rgb(0 0 0 / .25); }
+.help-close { float: right; min-height: 44px; padding: .5rem .75rem; }
+.response-matrix-suggested { background: #dcebdc; }
+.response-matrix-suggestion { display: block; margin-top: .25rem; color: #245c3a; font-size: .8rem; }
 .cloud-access, .cloud-card { width: min(100%, 44rem); margin-inline: auto; }
 .cloud-access form { display: grid; gap: 1rem; }
 .cloud-create > div, .cloud-results, .cloud-saved-answer, .cloud-card { min-width: 0; overflow-wrap: anywhere; }
