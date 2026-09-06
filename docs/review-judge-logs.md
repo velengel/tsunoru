@@ -342,3 +342,7 @@ All five findings affect a concrete runtime or documentation defect and were fix
 - [R060](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827727) **fix**: the browser bridge obtains the configured public Client ID from `/api/organizer/config`, keeping it aligned with Worker configuration.
 
 All findings were necessary for correct review convergence or runtime behavior and were fixed together in commit `366adbd`. This reaches the two-round autonomous review limit; no further review is requested.
+
+## R061-R064: Codex review for PR #21 (2026-09-07)
+
+The first review batch for `ff3f378` returned four findings: [timezone context](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307495), [organizer-only suggestions](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307500), [modal focus](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307506), and [score precomputation](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307510). All were necessary because they caused ambiguity, participant leakage, keyboard inaccessibility, or avoidable O(C²R) work. They were fixed together in commit `6ce1265` and will receive one grouped follow-up review within the two-round limit.

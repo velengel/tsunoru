@@ -705,7 +705,7 @@ fn OrganizerPage(id: String) -> Element {
                 Some(Ok(Some((event,matrix)))) => rsx! {
                     h2 { "{event.name}" }
                     p { "{matrix.responses.len()}人が回答しました。" }
-                    OrganizerResponseMatrixView { matrix }
+                    OrganizerResponseMatrixView { matrix, show_suggestions: true }
                     ShareLink { path:format!("/events/{}",event.id) }
                 },
                 Some(Err(error)) => rsx! { StatusMessage { message:error.message().to_owned() } },

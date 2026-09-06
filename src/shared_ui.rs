@@ -468,7 +468,10 @@ pub fn candidate_suggestion_score(availabilities: &[Availability]) -> u32 {
 }
 
 #[component]
-pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
+pub fn OrganizerResponseMatrixView(
+    matrix: OrganizerResponseMatrix,
+    show_suggestions: bool,
+) -> Element {
     if matrix.responses.is_empty() {
         return rsx! {
             section {
@@ -481,6 +484,21 @@ pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
         };
     }
 
+    let scores = matrix
+        .candidates
+        .iter()
+        .enumerate()
+        .map(|(index, _)| {
+            candidate_suggestion_score(
+                &matrix
+                    .responses
+                    .iter()
+                    .map(|row| row.availabilities[index])
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let maximum_score = scores.iter().copied().max().unwrap_or(0);
     rsx! {
         div { class: "response-matrix-view",
             p { id: "response-matrix-scroll-help", class: "response-matrix-scroll-help",
@@ -498,7 +516,7 @@ pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
                             "回答者ごとの候補日時への回答"
                         }
                         span { class: "response-matrix-caption-context",
-                            "{matrix.name} の候補日時"
+                            "{matrix.name} — {matrix.time_zone} の時刻"
                         }
                     }
                     thead {
@@ -514,17 +532,14 @@ pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
                                         &candidate.local_date,
                                         &candidate.local_time,
                                     );
-                                    let score = candidate_suggestion_score(
-                                        &matrix.responses.iter().map(|row| row.availabilities[candidate_index]).collect::<Vec<_>>()
-                                    );
-                                    let maximum_score = matrix.candidates.iter().enumerate().map(|(index, _)| candidate_suggestion_score(&matrix.responses.iter().map(|row| row.availabilities[index]).collect::<Vec<_>>())).max().unwrap_or(0);
+                                    let score = scores[candidate_index];
                                     rsx! {
-                                        th { scope: "col", class: if score == maximum_score && maximum_score > 0 { "response-matrix-suggested" } else { "" },
+                                        th { scope: "col", class: if show_suggestions && score == maximum_score && maximum_score > 0 { "response-matrix-suggested" } else { "" },
                                             time {
                                                 datetime: "{candidate.local_date}T{candidate.local_time}",
                                                 "{candidate_text}"
                                             }
-                                            if score == maximum_score && maximum_score > 0 { span { class: "response-matrix-suggestion", "おすすめ" } }
+                                            if show_suggestions && score == maximum_score && maximum_score > 0 { span { class: "response-matrix-suggestion", "おすすめ" } }
                                         }
                                     }
                                 }
