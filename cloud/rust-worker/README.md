@@ -31,6 +31,10 @@ Other `/api/*` routes require a valid cookie or explicit `Authorization: Bearer 
 
 Organizer and response capabilities are separate random 64-hex secrets. The browser retains each operation's exact payload and capability **before** submission, allowing a lost response to be retried after reloading. Storage failure blocks the write. Event-creation 400 errors happen before D1 access, so the UI can restore the input for correction; uncertain failures retain the pending request. Browser storage must remain available to manage the event. A shared URL contains only the event ID and never transfers organizer rights.
 
+### Google organizer session
+
+`POST /api/organizer/session` accepts `{id_token}` from Google Identity Services. The Worker verifies the RS256 signature against Google's JWKS and checks `iss`, `aud`, `sub`, and `exp` before issuing a host-only HttpOnly session cookie. Configure `GOOGLE_CLIENT_ID` as a non-secret var and a random 64-hex `ORGANIZER_SESSION_SECRET` as a Worker secret. Until those settings exist, event creation/deletion keeps the legacy staging session so local fixtures remain runnable; production rollout must configure both before treating Google sign-in as enabled. ID tokens are never logged or returned.
+
 ## Event API
 
 JSON bodies are limited to 64 KiB while streaming. IDs use 1–64 ASCII letters, digits, `_`, or `-`; names use 1–100 trimmed characters. Events accept 1–20 candidates and an optional 500-character organizer note. The Worker validates calendar dates, clock times, IANA zones and unique local datetimes. DST gaps and folds are rejected because a candidate must identify one instant.
@@ -54,7 +58,8 @@ After approval for the new remote resources:
 1. Create the dedicated empty DB: `npx wrangler d1 create tsunoru-staging --env staging --location apac --update-config=false`. Record the returned ID in `env.staging.d1_databases`.
 2. Inspect the target, then apply `npx wrangler d1 execute tsunoru-staging --env staging --remote --file schema.sql` **once**. Never drop/reset existing tables.
 3. Save `{ "STAGING_API_TOKEN": "<new 32-byte random hex value>" }` in ignored `secrets/staging.json`, owner-readable only. Keep the actual code in private local storage or a password manager. Do not put it in command arguments or commits.
-4. Run `npm run deploy:check`, then `npx wrangler deploy --env staging --secrets-file secrets/staging.json`. A new Worker accepts its first secret through `--secrets-file`; `secret put` requires the Worker to exist.
+4. Add `GOOGLE_CLIENT_ID` to the staging vars and `ORGANIZER_SESSION_SECRET` (a new random 64-hex value) to ignored `secrets/staging.json` when enabling Google organizer auth.
+5. Run `npm run deploy:check`, then `npx wrangler deploy --env staging --secrets-file secrets/staging.json`. A new Worker accepts its first secret through `--secrets-file`; `secret put` requires the Worker to exist.
 5. Record the deployed version and check health, assets, unauthenticated 401, wrong Origin 403, cookie login, create/read/answer/retry and organizer-only results using synthetic data. Check the same browser journey at 320px and desktop separately.
 
 This pilot is for a few trusted testers with disposable data. Rate limits, retention/deletion policy for continued use, individual revocation, backup/restore and general-public readiness need the decisions in #12. Local tests and dry-run do not establish a deployed app or physical-phone behavior. Current evidence is in [report 0028](../../docs/reports/0028-staging-browser-app.md).

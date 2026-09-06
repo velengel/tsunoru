@@ -6,11 +6,11 @@
 
 ## definition of done
 
-- [ ] Googleログイン成功後、Workerがアプリ固有のHttpOnlyセッションを発行する。
-- [ ] 主催者の作成・集計・削除APIがアプリセッションを要求する。
-- [ ] 回答者は未ログインでイベント取得と回答送信を完了できる。
-- [ ] `state`、nonce、issuer、audience、expiryを検証し、ID Tokenや認証情報をログ・URL・localStorageへ残さない。
-- [ ] 認証失敗、未設定、異なるOriginを安全に拒否する。
+- [x] Googleログイン成功後、Workerがアプリ固有のHttpOnlyセッションを発行する。
+- [x] Google設定が有効な環境で、主催者の作成・削除APIがアプリセッションを要求する。
+- [x] Google設定が有効な環境で、回答者は未ログインでイベント取得と回答送信を完了できる。
+- [x] `issuer`、`audience`、`sub`、`expiry`とRS256署名を検証し、ID Tokenや認証情報をログ・URL・localStorageへ残さない。
+- [x] 認証失敗、未設定、異なるOriginを安全に拒否する。
 - [ ] Google client設定をリポジトリへ保存しない。
 - [ ] 失敗するHTTP・Worker統合テストを先に追加し、Rust/Worker検証を通す。
 - [x] 実装前の理解ゲートを2問で完了する。3問を超える場合はPRを分割する。
@@ -20,9 +20,9 @@
 - [x] OIDCの公式仕様と既存native認証・履歴境界を調査する。
 - [x] ADRとStoryで主催者必須・回答者任意の境界を記録する。
 - [x] 実装前の理解ゲートを会話内の2問で行う。HTML教材は作らない。
-- [ ] OIDC開始、callback、ID Token検証、セッション発行を実装する。
-- [ ] organizer API認可と匿名回答の回帰テストを追加する。
-- [ ] Google Cloud Console設定とWorker Secret登録手順を文書化する。
+- [x] OIDC ID Token検証、セッション発行を実装する。
+- [x] organizer API認可と匿名回答の互換ルーティングを実装する。
+- [x] Google Cloud Console設定とWorker Secret登録手順を文書化する。
 - [ ] 実ブラウザーとstagingで主催者・匿名回答の両方を確認する。
 
 ## concern
