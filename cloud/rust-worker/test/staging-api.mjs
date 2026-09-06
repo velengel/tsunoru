@@ -7,10 +7,12 @@ import {
 const event = (id) => ({
   id,
   name: "週末の予定",
+  organizer_note: "参加できる日時を教えてください。",
+  time_zone: "Asia/Tokyo",
   organizer_capability: ORGANIZER_TOKEN,
   candidates: [
-    { id: "c1", label: "2026-09-10 10:00" },
-    { id: "c2", label: "2026-09-11 18:00" },
+    { id: "c1", local_date: "2026-09-10", local_time: "10:00" },
+    { id: "c2", local_date: "2026-09-11", local_time: "18:00" },
   ],
 });
 const answer = (respondent_name = "同じ名前") => ({
@@ -85,19 +87,56 @@ export async function verifyStagingApi(pool) {
   const publicEvent = await request(fixture, "/api/events/event-one", { status: 200 });
   assert.equal(publicEvent.json.id, "event-one");
   assert.equal(publicEvent.json.name, event("event-one").name);
+  assert.equal(publicEvent.json.organizer_note, event("event-one").organizer_note);
+  assert.equal(publicEvent.json.time_zone, "Asia/Tokyo");
   assert.deepEqual(publicEvent.json.candidates, event("event-one").candidates);
   assertPublicPayload(publicEvent.json);
   const storedEvent = await db.prepare("SELECT organizer_capability_hash FROM events WHERE id = ?1").bind("event-one").first();
   assert.equal(storedEvent.organizer_capability_hash, createHash("sha256").update(ORGANIZER_TOKEN).digest("hex"));
   const beforeDuplicate = await rowCounts(db);
-  await request(fixture, "/api/events", { method: "POST", payload: event("event-one"), status: 409 });
-  await request(fixture, "/api/events", {
-    method: "POST", status: 409,
-    payload: { ...event("event-one"), organizer_capability: capability(999), candidates: [{ id: "injected", label: "not authorized" }] },
-  });
+  const replayedEvent = await request(fixture, "/api/events", { method: "POST", payload: event("event-one"), status: 200 });
+  assert.deepEqual(replayedEvent.json, { id: "event-one", name: event("event-one").name });
+  const normalizedRetry = {
+    ...event("event-one"), name: `  ${event("event-one").name}\n`,
+    organizer_note: `\n${event("event-one").organizer_note} `, time_zone: " Asia/Tokyo ",
+    candidates: [...event("event-one").candidates].reverse().map((candidate) => ({
+      ...candidate, local_date: ` ${candidate.local_date} `, local_time: ` ${candidate.local_time} `,
+    })),
+  };
+  await request(fixture, "/api/events", { method: "POST", payload: normalizedRetry, status: 200 });
+  const conflictingEvents = [
+    { ...event("event-one"), organizer_capability: capability(999) },
+    { ...event("event-one"), name: "別の予定" },
+    { ...event("event-one"), organizer_note: "変更後のひとこと" },
+    { ...event("event-one"), time_zone: "UTC" },
+    { ...event("event-one"), candidates: [{ ...event("e").candidates[0], id: "injected" }] },
+    { ...event("event-one"), candidates: event("e").candidates.map((candidate) => ({ ...candidate, local_time: "11:00" })) },
+  ];
+  for (const payload of conflictingEvents) await request(fixture, "/api/events", { method: "POST", payload, status: 409 });
   assert.deepEqual(await rowCounts(db), beforeDuplicate);
   await request(fixture, "/api/events/unknown", { status: 404 });
-  console.log("PASS event creation, isolated reads, duplicate conflicts and hashed capability storage");
+  console.log("PASS event creation: structured metadata, normalized authorized retries and immutable conflicts");
+
+  const emptyNoteEvent = { ...event("empty-note"), organizer_note: " \n " };
+  await request(fixture, "/api/events", { method: "POST", payload: emptyNoteEvent, status: 201 });
+  await request(fixture, "/api/events", { method: "POST", payload: { ...emptyNoteEvent, organizer_note: null }, status: 200 });
+  delete emptyNoteEvent.organizer_note;
+  await request(fixture, "/api/events", { method: "POST", payload: emptyNoteEvent, status: 200 });
+  assert.equal((await request(fixture, "/api/events/empty-note", { status: 200 })).json.organizer_note, null);
+
+  const validDatetimeEvents = [
+    { ...event("leap-day"), name: "名".repeat(100), organizer_note: "文".repeat(500), time_zone: "UTC", candidates: [{ id: "leap", local_date: "2028-02-29", local_time: "23:59" }] },
+    { ...event("after-spring-gap"), organizer_note: "複数行\nでも入力できる", time_zone: "America/New_York", candidates: [{ id: "spring", local_date: "2026-03-08", local_time: "03:30" }] },
+    { ...event("after-autumn-fold"), time_zone: "America/New_York", candidates: [{ id: "autumn", local_date: "2026-11-01", local_time: "02:30" }] },
+  ];
+  for (const payload of validDatetimeEvents) {
+    await request(fixture, "/api/events", { method: "POST", payload, status: 201 });
+    const actual = await request(fixture, `/api/events/${payload.id}`, { status: 200 });
+    assert.equal(actual.json.organizer_note, payload.organizer_note);
+    assert.equal(actual.json.time_zone, payload.time_zone);
+    assert.deepEqual(actual.json.candidates, payload.candidates);
+  }
+  console.log("PASS optional note normalization, exact input limits, leap day and valid DST-adjacent times");
 
   const beforeInvalid = await rowCounts(db);
   for (const rawBody of ["{", "null", "[]", "{}", '{"id":42}']) {
@@ -120,14 +159,43 @@ export async function verifyStagingApi(pool) {
     { ...event("invalid-capability"), organizer_capability: "short" },
     { ...event("invalid-candidates"), candidates: [] },
     { ...event("duplicate-candidates"), candidates: [event("e").candidates[0], event("e").candidates[0]] },
+    { ...event("duplicate-ids"), candidates: event("e").candidates.map((candidate) => ({ ...candidate, id: "same" })) },
+    { ...event("duplicate-datetimes"), candidates: [event("e").candidates[0], { ...event("e").candidates[0], id: "other" }] },
     { ...event("long-name"), name: "名".repeat(101) },
-    { ...event("many-candidates"), candidates: Array.from({ length: 21 }, (_, i) => ({ id: `c${i}`, label: "date" })) },
+    { ...event("long-note"), organizer_note: "文".repeat(501) },
+    { ...event("unknown-timezone"), time_zone: "Mars/Base" },
+    { ...event("offset-not-timezone"), time_zone: "+09:00" },
+    { ...event("empty-timezone"), time_zone: " " },
+    { ...event("many-candidates"), candidates: Array.from({ length: 21 }, (_, i) => ({ id: `c${i}`, local_date: "2026-09-10", local_time: `${i.toString().padStart(2, "0")}:00` })) },
+    ...["2026-02-29", "2026-04-31", "2026-13-01", "0000-01-01", "2026-9-10", "2026-09-10T00:00:00Z"].map((local_date) => ({ ...event("bad-date"), candidates: [{ ...event("e").candidates[0], local_date }] })),
+    ...["24:00", "12:60", "9:00", "10:00:00"].map((local_time) => ({ ...event("bad-time"), candidates: [{ ...event("e").candidates[0], local_time }] })),
+    { ...event("dst-gap"), time_zone: "America/New_York", candidates: [{ id: "gap", local_date: "2026-03-08", local_time: "02:30" }] },
+    { ...event("dst-fold"), time_zone: "America/New_York", candidates: [{ id: "fold", local_date: "2026-11-01", local_time: "01:30" }] },
   ];
   for (const payload of malformedEvents) {
     await request(fixture, "/api/events", { method: "POST", payload, status: 400 });
   }
   assert.deepEqual(await rowCounts(db), beforeInvalid);
-  console.log("PASS JSON, media type, streamed body size and event input boundaries");
+  console.log("PASS invalid dates, times, time zones and DST gaps/folds reject without writes");
+
+  const beforeParallelEvents = await rowCounts(db);
+  const repeatedCreates = await Promise.all(Array.from({ length: 6 }, () => request(fixture, "/api/events", {
+    method: "POST", payload: event("parallel-event"),
+  })));
+  assert.deepEqual(repeatedCreates.map((result) => result.status).sort(), [200, 200, 200, 200, 200, 201]);
+  const competingCreates = [event("competing-event"), {
+    ...event("competing-event"), name: "競合する予定", organizer_note: "別の内容",
+    candidates: event("e").candidates.map((candidate) => ({ ...candidate, local_time: "12:00" })),
+  }];
+  const createRace = await Promise.all(competingCreates.map((payload) => request(fixture, "/api/events", { method: "POST", payload })));
+  assert.deepEqual(createRace.map((result) => result.status).sort(), [201, 409]);
+  const winningCreate = competingCreates[createRace.findIndex((result) => result.status === 201)];
+  const savedCreate = await request(fixture, "/api/events/competing-event", { status: 200 });
+  assert.equal(savedCreate.json.name, winningCreate.name);
+  assert.equal(savedCreate.json.organizer_note, winningCreate.organizer_note);
+  assert.deepEqual(savedCreate.json.candidates, winningCreate.candidates);
+  assert.deepEqual(await rowCounts(db), { ...beforeParallelEvents, events: beforeParallelEvents.events + 2, candidates: beforeParallelEvents.candidates + 4 });
+  console.log("PASS concurrent event retries save one complete event and preserve the winning payload");
 
   const beforeResponses = await rowCounts(db);
   await request(fixture, responsePath("event-one"), { method: "POST", payload: answer(), status: 403 });

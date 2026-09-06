@@ -1,8 +1,12 @@
-# Limited staging API
+# Limited staging app
 
-This Worker prepares isolated API testing before Dioxus UI integration. It does not implement the full native product. Use a new disposable D1 database: `schema.sql` is a fresh baseline, not a migration for the #8/#9 experiment. Existing tables must cause schema application to fail rather than silently accepting incompatible columns.
+The Dioxus CSR app and Rust Worker share one origin. A tester enters the shared trial code, creates an event, shares its URL, submits availability, and opens the organizer matrix in the browser that created the event. Native Fullstack remains the default root build; `cloud-web` selects this smaller journey.
+
+Use a **new** dedicated D1 database. `schema.sql` is a fresh baseline, not a migration for the native app or earlier experiments. Existing tables intentionally fail schema application. Accounts, response editing, comments, final decisions, browser-to-browser recovery, and existing-data migration are outside this pilot ([#12](https://github.com/velengel/tsunoru/issues/12)).
 
 ## Build and verify
+
+Run from `cloud/rust-worker`, with the repository's Dioxus CLI and Rust toolchain installed:
 
 ```sh
 rustup target add wasm32-unknown-unknown
@@ -15,41 +19,43 @@ cargo fmt --check
 npm run deploy:check
 ```
 
-Run from `cloud/rust-worker`. Node tests use a fresh in-memory Miniflare D1 and dispose their runtime on success, error, SIGINT and SIGTERM. They do not use Wrangler login, remote resources, the native SQLite database, or another repository's packages. `strip = "debuginfo"` preserves the information wasm-bindgen needs; `strip = true` does not.
+`npm run check` tests the API, sessions, static routing and cleanup against disposable Miniflare instances, plus isolated build failure and signal fixtures. It uses neither remote resources nor the native SQLite database. `npm run deploy:check` builds the CSR app and Worker, verifies the external script loader, records asset SHA-256 hashes under `build/`, and bundles without deploying. The Worker and `build/public/` assets are assembled together in an ignored temporary directory and replace `build/` only after both builds succeed. Failure or SIGINT/SIGTERM removes that invocation's staging files and preserves the previous complete bundle. Compiler caches remain reusable; a filesystem recovery failure reports the retained backup path. App changes also require the root checks in `AGENTS.md`.
 
-## Request boundary
+For browser development, create an ignored `.dev.vars.staging` with a **synthetic** 64-hex `STAGING_API_TOKEN`, initialize only the local database with `npx wrangler d1 execute tsunoru-staging --env staging --local --file schema.sql`, then run `npm run dev:app`. Open `http://localhost:8791` so the configured Origin matches; localhost allows the Secure cookie in supporting browsers. This local database belongs to this worktree. Never reset an existing database to rerun initialization.
 
-`GET /health` returns runtime status. Every `/api/*` route requires `Authorization: Bearer <STAGING_API_TOKEN>`. The staging token is 64 hex characters generated from 32 cryptographically random bytes; it is distinct from organizer and response capabilities. Missing/invalid settings fail closed with 503. Incorrect authentication returns 401 before reading a body or opening D1.
+## Authentication and storage
 
-Configure one exact `APP_ORIGIN`, for example `https://tsunoru-staging.example.test`. If a request includes `Origin`, it must match exactly. `null`, other ports, other schemes, credentials, paths, and origin lists are rejected. Requests without `Origin` can be made by authenticated CLI clients. This API does not authenticate with cookies and does not enable cross-origin browser access. Origin checking alone is not authentication.
+`POST /api/staging/session` exchanges `{access_code}` for a 12-hour HMAC-SHA256 signed `__Host-tsunoru_staging` cookie. It is HttpOnly, Secure, SameSite=Strict, host-only and bound to `APP_ORIGIN`. `GET` checks the session; `DELETE` clears this browser's cookie. Logout does not individually revoke a copied cookie. Rotating `STAGING_API_TOKEN` invalidates every session and the old trial code. The code is never embedded in assets or URLs and is not persisted in browser storage.
 
-POST bodies must be JSON, at most 64 KiB while streaming. Malformed JSON or unknown fields return 400, other media types 415, oversized bodies 413. IDs use 1–64 ASCII letters, digits, `_`, or `-`. Names use 1–100 characters after trimming, candidate labels 1–100 characters, and events have 1–20 distinct candidates (matching native count/name limits). Date/time parsing and full native DTO parity belong to UI integration.
+Other `/api/*` routes require a valid cookie or explicit `Authorization: Bearer <STAGING_API_TOKEN>` for CLI checks. Login, logout and cookie mutations require an exact Origin. Any supplied wrong Origin is rejected, including for Bearer calls. Missing or malformed settings return 503; bad credentials return 401 before D1 access. API responses are `no-store`; SQL, capabilities and raw exception messages never appear in responses or logs. Static files and `/health` are public; Worker-first routing keeps API authentication ahead of SPA fallback.
 
-All responses use `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`. Internal errors expose only `{ "error": { "code": "internal_error" } }`, never SQL, credentials or exception text.
+Organizer and response capabilities are separate random 64-hex secrets. The browser retains each operation's exact payload and capability **before** submission, allowing a lost response to be retried after reloading. Storage failure blocks the write. Event-creation 400 errors happen before D1 access, so the UI can restore the input for correction; uncertain failures retain the pending request. Browser storage must remain available to manage the event. A shared URL contains only the event ID and never transfers organizer rights.
 
-## Routes
+## Event API
 
-| Method/path | Additional credential | Request and behavior |
+JSON bodies are limited to 64 KiB while streaming. IDs use 1–64 ASCII letters, digits, `_`, or `-`; names use 1–100 trimmed characters. Events accept 1–20 candidates and an optional 500-character organizer note. The Worker validates calendar dates, clock times, IANA zones and unique local datetimes. DST gaps and folds are rejected because a candidate must identify one instant.
+
+| Method/path | Additional credential | Request and result |
 | --- | --- | --- |
-| `POST /api/events` | `organizer_capability` in JSON, 64 hex characters | `{id,name,organizer_capability,candidates:[{id,label}]}`; 201 `{id,name}`; duplicate ID 409 |
-| `GET /api/events/:id` | none | `{id,name,candidates:[{id,label}]}`; no capability hashes or private response data |
-| `POST /api/events/:id/responses` | `x-response-capability`, unique 64-hex secret for this response | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, identical replay 200, changed replay 409 |
-| `GET /api/events/:id/responses` | `x-organizer-capability` | `{responses:[{response_id,respondent_name,availabilities:[{candidate_id,availability}]}]}`; invalid capability 403 |
+| `POST /api/events` | `organizer_capability` in JSON | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}],organizer_capability}`; first create 201 `{id,name}`, identical authorized retry 200, changed/wrong-owner retry 409 |
+| `GET /api/events/:id` | none | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}]}`; no capabilities or private answers |
+| `POST /api/events/:id/responses` | `x-response-capability` | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, identical retry 200, changed retry 409 |
+| `GET /api/events/:id/responses` | `x-organizer-capability` | `{responses:[{response_id,respondent_name,availabilities:[{candidate_id,availability}]}]}`; wrong capability 403 |
 
-The caller generates and retains a response capability **before** the first submission, so a lost HTTP response can be retried. Generate secrets with Web Crypto or an OS CSPRNG. D1 stores only SHA-256 hashes. A display name can be reused by different participants; public response IDs never authorize a write. The event-wide response credential and `/api/answers` from #9 are removed. Every candidate must occur exactly once, and availability is `available`, `maybe`, or `unavailable`.
+Every candidate must be answered exactly once with `available`, `maybe`, or `unavailable`. Display names may repeat; they never identify ownership. D1 keeps capability and normalized payload hashes. Authorization, complete candidate sets and writes are checked within one batch. Competing retries cannot mix answers; a statement failure rolls the whole batch back.
 
-The Worker normalizes names and candidate order, then compares a hash of the whole payload. D1 batch conditions check the candidate set, response capability, event and payload on the writes themselves. An identical concurrent submission creates one response; a competing changed payload receives 409 and cannot modify the first response. Any statement failure rolls back the batch. Response editing and per-response revocation are not implemented.
+## Staging deployment
 
-## Staging deployment preparation
+The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The intended Worker and new D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. The D1 ID remains a placeholder until creation is authorized and succeeds.
 
-The committed config has `workers_dev = false`, `preview_urls = false`, no routes, and a placeholder D1 ID. `npm run deploy:check` bundles locally without deploying. An actual staging deployment requires selecting a dedicated account/database and origin and completing these steps:
+After approval for the new remote resources:
 
-1. Create a **new** `tsunoru-staging` D1 (`npx wrangler d1 create tsunoru-staging`) and record its ID in `env.staging.d1_databases`. Do not use the native or old experiment database.
-2. Apply the fresh schema once with `npx wrangler d1 execute tsunoru-staging --env staging --remote --file schema.sql`. Inspect the target account and DB before remote execution. Do not reset an existing DB.
-3. Install a new 32-byte random hex token with the interactive `npx wrangler secret put STAGING_API_TOKEN --env staging`. Keep it in ignored local secret storage or a password manager; never use it as a command-line argument or commit it.
-4. Set `APP_ORIGIN` to the chosen HTTPS origin. Enable only the chosen staging route/hostname. Keep preview URLs off.
-5. Deploy with `npx wrangler deploy --env staging`, then check unauthenticated 401, wrong-origin 403, authorized create/read/answer, and identical retry against **synthetic** data.
+1. Create the dedicated empty DB: `npx wrangler d1 create tsunoru-staging --env staging --location apac --update-config=false`. Record the returned ID in `env.staging.d1_databases`.
+2. Inspect the target, then apply `npx wrangler d1 execute tsunoru-staging --env staging --remote --file schema.sql` **once**. Never drop/reset existing tables.
+3. Save `{ "STAGING_API_TOKEN": "<new 32-byte random hex value>" }` in ignored `secrets/staging.json`, owner-readable only. Keep the actual code in private local storage or a password manager. Do not put it in command arguments or commits.
+4. Run `npm run deploy:check`, then `npx wrangler deploy --env staging --secrets-file secrets/staging.json`. A new Worker accepts its first secret through `--secrets-file`; `secret put` requires the Worker to exist.
+5. Record the deployed version and check health, assets, unauthenticated 401, wrong Origin 403, cookie login, create/read/answer/retry and organizer-only results using synthetic data. Check the same browser journey at 320px and desktop separately.
 
-The staging token can be rotated by replacing the Worker secret. Rate limiting, individual tester identity/expiry, account sessions, Dioxus UI integration and production backup/migration are follow-ups before wider use. Local tests and dry-run are not evidence of a live deployment.
+This pilot is for a few trusted testers with disposable data. Rate limits, retention/deletion policy for continued use, individual revocation, backup/restore and general-public readiness need the decisions in #12. Local tests and dry-run do not establish a deployed app or physical-phone behavior. Current evidence is in [report 0028](../../docs/reports/0028-staging-browser-app.md).
 
-References: [D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch), [Workers secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [Wrangler configuration](https://developers.cloudflare.com/workers/wrangler/configuration/), ADR 0051–0053.
+References: [Static Assets routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/), [D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch), [Workers secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [Wrangler deploy](https://developers.cloudflare.com/workers/wrangler/commands/deployments/), ADR 0055–0058.

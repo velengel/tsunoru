@@ -1,11 +1,18 @@
-name = "tsunoru-staging-api"
+name = "tsunoru-staging"
+account_id = "689a975b35f6957c3a0b89bc004cc652"
 main = "build/index.js"
 compatibility_date = "2026-09-03"
 workers_dev = false
 preview_urls = false
 
 [build]
-command = "worker-build --release"
+command = "node build-staging.mjs"
+
+[assets]
+directory = "./build/public"
+binding = "ASSETS"
+run_worker_first = true
+not_found_handling = "single-page-application"
 
 [[d1_databases]]
 binding = "DB"
@@ -16,12 +23,12 @@ database_id = "00000000-0000-0000-0000-000000000000"
 APP_ORIGIN = "https://tsunoru-staging.example.test"
 
 [env.staging]
-name = "tsunoru-staging-api"
-workers_dev = false
+name = "tsunoru-staging"
+workers_dev = true
 preview_urls = false
 
 [env.staging.vars]
-APP_ORIGIN = "https://tsunoru-staging.example.test"
+APP_ORIGIN = "https://tsunoru-staging.kounakadora528.workers.dev"
 
 [[env.staging.d1_databases]]
 binding = "DB"

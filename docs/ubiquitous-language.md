@@ -371,6 +371,10 @@
 - 参考リンク：[ADR 0041](ADR/0041-bind-verification-writes-to-one-connection.md)
 # 公開計画で使う運用用語
 
+- **CSR**：画面をブラウザーで描画する構成。限定版を native server function から分離して build するときに使う。system synonym: Client-Side Rendering。参照: [ADR 0055](ADR/0055-serve-a-csr-pilot-with-the-rust-worker.md)。
+- **試用コード**：限定版の入口で一度入力する、試用者に配るランダムな秘密値。主催者権限や本人確認を表さない。system synonym: `STAGING_API_TOKEN`。参照: [ADR 0056](ADR/0056-exchange-the-pilot-code-for-an-expiring-cookie.md)。
+- **試用セッション**：試用コードの検証後に12時間だけ API 利用を許す状態。account session と区別し、HttpOnly Cookie で保持する。system synonym: signed staging session。参照: [ADR 0056](ADR/0056-exchange-the-pilot-code-for-an-expiring-cookie.md)。
+
 - **限定公開**：共有先を知人等に絞る試用。認証された招待者だけのアクセス制御とは異なり、インターネットからの攻撃を想定する。system synonym: limited pilot。参照: [公開計画](reports/0021-publication-plan.md)。
 - **RPO**：障害時に失ってよいデータの時間幅。backup間隔の判断に使う。system synonym: Recovery Point Objective。参照: [公開計画](reports/0021-publication-plan.md)。
 - **RTO**：障害から復旧までの目標時間。復元演習の判定に使う。system synonym: Recovery Time Objective。参照: [公開計画](reports/0021-publication-plan.md)。

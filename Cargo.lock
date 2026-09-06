@@ -3905,12 +3905,16 @@ dependencies = [
  "chrono-tz",
  "dioxus",
  "dioxus-ssr",
+ "js-sys",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "sqlx",
  "tokio",
  "uuid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

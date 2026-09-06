@@ -1,4 +1,6 @@
 /build/
+/.staging-build-*/
+/public/
 /target/
 /.wrangler/
 /node_modules/

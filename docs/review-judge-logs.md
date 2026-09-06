@@ -1,5 +1,47 @@
 # レビュー判断履歴
 
+## PR #13 のローカルレビュー（2026-09-06）
+
+R040–R043 と R018/R020/R023 を参照し、限定試用の目的、Cookie の導入、同一 origin の CSR 配信から再評価した。
+Worker の独立した self-review では、主催者 hash、Cookie と Origin、日時、同じ D1 batch 内の認可に追加の要対応指摘はなかった。
+実装中とブラウザー検証で見つけた以下の問題はまとめて修正した。
+外部の review comment に対する返信ではなく、[PR #13](https://github.com/velengel/tsunoru/pull/13) のローカル判断である。
+
+| ID | 判断 | 理由と証拠 |
+| --- | --- | --- |
+| R045 | 修正 | 自前の eval を除いても `document::Title` が固定版 Dioxus 内部で eval を呼び、CSP と衝突する。静的 HTML のタイトルを使用し、ブラウザー操作後の error/warn 0件を確認 |
+| R046 | 修正 | release CSR build の wasm-opt が DWARF で失敗しても CLI が0で終了した。`--debug-symbols=false` を固定し、最適化ログと実際の Wasm 操作を確認 |
+| R047 | 修正 | Dioxus の出力に旧 hashed assets が残った。公開用の生成ディレクトリを再作成してからビルドし、最終6ファイルと SHA-256 を記録 |
+| R048 | 修正 | 320px viewport の有効幅305pxに対して html/body の最小幅320pxが残り、横にはみ出した。限定版で両方を解除し、作成と集計の client/scroll 幅305/305pxを確認 |
+| R049 | 修正 | 不正な zone などの400でも送信内容を固定し続けると入力を訂正できない。DB操作前の `invalid_request` だけで pending を解除し、元の項目をフォームへ戻す。通信失敗や401/409/500では保持。ブラウザーで訂正後の作成まで確認 |
+
+実装と検証: [48a64eb](https://github.com/velengel/tsunoru/commit/48a64eb)、[report 0028](reports/0028-staging-browser-app.md)。
+CSS や Rust の文字列をなぞる2試験は採用せず、保存と復元、表示される結果の9試験、実ブラウザーの測定を根拠にした。
+account、個別失効、回答編集、旧 DB migration の追加は今回採らず、[#12](https://github.com/velengel/tsunoru/issues/12) で要否を判断する。
+
+hosted Codex review は2往復を完了し、R050/R051 を修正・返信・解決した。最後にレビューされた head は `6df16f7` で、その後の R051 修正と判断記録は再レビューしていない。上限に従い、3回目は依頼しない。
+remote D1 作成の承認待ちはコードレビューの承認と分ける。
+
+### R050: ビルド失敗時の生成物（初回 hosted review）
+
+2026-09-06。[review summary](https://github.com/velengel/tsunoru/pull/13#issuecomment-5555942089) は `109d276` を対象に完了し、[指摘](https://github.com/velengel/tsunoru/pull/13#discussion_r3942568289) は1件だった。
+
+**修正**。途中の Worker build が失敗すると、新しい assets と不完全な Worker が公開候補のディレクトリに混ざる。限定試用を安全に配置する目的に直接関係し、合成 CLI でも再現したため、必要な対応と判断した。
+
+[b99ef89](https://github.com/velengel/tsunoru/commit/b99ef89723b1364354c4fb1521573ed774672781) で Worker と assets を一時 bundle にまとめ、両方の成功後に切り替える。失敗・SIGINT・SIGTERM・成功の4ケースで出力と所有子プロセスを確認し、実際の dry-run と Worker HTTP 試験も通した。[report 0028](reports/0028-staging-browser-app.md) に証拠を記録した。
+
+検証・push 後に [コミット付きの対応返信](https://github.com/velengel/tsunoru/pull/13#discussion_r3942587174) を送り、thread の `isResolved: true` を確認した。初回の1往復はここで完了。最終確認は残り1回以内とし、結果を転記するだけの未レビュー commit は追加しない。
+
+### R051: 失敗したコマンドの補助プロセス（2往復目）
+
+2026-09-06。`6df16f7` に対する [2往復目の review](https://github.com/velengel/tsunoru/pull/13#pullrequestreview-5123672225) は完了し、新しい [指摘](https://github.com/velengel/tsunoru/pull/13#discussion_r3942598160) は1件だった。
+
+**修正**。実 CLI での発生は未観測だが、コンパイラーが失敗して補助プロセスだけが残る合成ケースで再現した。公開画面の不具合とは区別する。所有プロセスを残さない既存要件に合い、対象を終了処理と再現試験に絞れるため、今回は対応する。
+
+[93b3633](https://github.com/velengel/tsunoru/commit/93b36337200bfca07082836ae80d0e30444850aa) で失敗後も group ID を保持し、TERM、期限付き待機、必要時の KILL を行ってから pipe の終了を待つ。TERM を無視する補助プロセスを含め、失敗・SIGINT・SIGTERM・成功の4ケースと実際の dry-run が通った。[report 0028](reports/0028-staging-browser-app.md) に再現と検証を記録した。
+
+検証・push 後に [コミット付きの対応返信](https://github.com/velengel/tsunoru/pull/13#discussion_r3942606217) を送り、thread の `isResolved: true` を確認した。受領した指摘はすべて判断済みで、2往復を終える。この修正と履歴の commit は hosted review 未実施であり、承認済みとは扱わない。
+
 ## PR #10: #9 の判断を実装から再評価（2026-09-06）
 
 R031、R034–R039 を読んでから `492506e` のコードと native の回答契約を照合した。これは #9 に新しい hosted review を要求するものではない。#10 の初回 hosted review は `7f2e6e0` で完了し、指摘0件だった。最大2往復の上限を引き継ぐ。

@@ -1,5 +1,7 @@
 import { FixturePool } from "./test/fixtures.mjs";
 import { verifyStagingApi } from "./test/staging-api.mjs";
+import { verifyStagingSession } from "./test/staging-session.mjs";
+import { verifyStagingAssets } from "./test/staging-assets.mjs";
 
 const pool = new FixturePool();
 const keepAlive = setInterval(() => {}, 1_000);
@@ -14,6 +16,8 @@ process.once("SIGTERM", onTerminate);
 
 try {
   await verifyStagingApi(pool);
+  await verifyStagingSession(pool);
+  await verifyStagingAssets(pool);
   console.log("PASS Rust Worker staging API contract");
 } catch (error) {
   process.exitCode ||= 1;

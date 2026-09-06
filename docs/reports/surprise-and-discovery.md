@@ -1,5 +1,17 @@
 # Surprise & Discovery
 
+## 限定公開版のブラウザー境界
+
+2026-09-06、PR #13。Dioxus の `document::Title` は内部で eval を呼ぶため、自前の `document::eval` を除くだけでは厳しい CSP に適合しなかった。固定タイトルを静的 HTML に任せ、実際の画面操作で CSP 違反が出ないことを確認した。
+
+release build でも CLI の debug symbols が既定で有効になり、wasm-opt が失敗して終了コード0のままになる試行があった。公開用は `--debug-symbols=false` を固定し、生成 Wasm の実行まで確かめた。また、古い hashed assets が出力先へ残るため、公開用の生成ディレクトリを再作成してからビルドする。
+
+320px の viewport で縦スクロールバーが出ると有効幅は305pxだった。`body` と `html` の両方にある最小幅を限定版で解除し、カレンダーと集計の実測で横はみ出しを解消した。詳細と証拠は [report 0028](0028-staging-browser-app.md)。
+
+UI の生成が済んでいても、続く Worker build の失敗で公開用ディレクトリに新旧の出力が混ざった。両方を一時 bundle にまとめて成功後に切り替え、失敗やシグナル中断でも直前の完成物を保つようにした。再現試験では失敗コードだけでなく、狙った途中工程へ到達した証拠も確認する。
+
+コマンド本体の終了は補助プロセスの終了を保証しない。合成コンパイラーが失敗後に子を残すケースを追加し、所有 group の回収までを終了処理に含めた。
+
 ## Batching needs a stopping condition
 
 Grouping related fixes did not prevent repeated review passes from expanding this PR. The user's correction sets a two-round limit and makes scope, demonstrated impact and remaining risk part of the merge decision. Review convergence is no longer an unbounded completion requirement; ADR 0043 is authoritative.

@@ -1,0 +1,21 @@
+html, body { min-width: 0; }
+.cloud-shell { width: min(100%, 76rem); margin-inline: auto; }
+.cloud-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; min-width: 0; }
+.cloud-header button { min-height: 44px; border: 0; background: transparent; cursor: pointer; }
+.cloud-access, .cloud-card { width: min(100%, 44rem); margin-inline: auto; }
+.cloud-access form { display: grid; gap: 1rem; }
+.cloud-create > div, .cloud-results, .cloud-saved-answer, .cloud-card { min-width: 0; overflow-wrap: anywhere; }
+.cloud-results { width: min(100%, 65rem); margin-inline: auto; }
+.cloud-results .share-field { margin-top: 2rem; }
+.cloud-results > button { margin-top: 1rem; }
+.cloud-new-event { display: block; margin: 1rem auto; }
+.cloud-saved-answer { padding-inline-start: 1.25rem; line-height: 1.8; }
+.cloud-card h1, .cloud-card h2 { overflow-wrap: anywhere; }
+.cloud-shell input, .cloud-shell textarea { max-width: 100%; min-width: 0; }
+.cloud-shell fieldset:disabled { opacity: .7; }
+@media (max-width: 520px) {
+  .cloud-header { margin-bottom: 1rem; gap: .5rem; }
+  .cloud-card { padding: 1rem; }
+  .cloud-create { gap: 1.5rem; }
+  .cloud-access { padding: 1rem; }
+}
