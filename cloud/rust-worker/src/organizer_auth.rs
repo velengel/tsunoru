@@ -20,6 +20,7 @@ const GOOGLE_JWKS: &str = "https://www.googleapis.com/oauth2/v3/certs";
 #[serde(deny_unknown_fields)]
 struct Login {
     id_token: String,
+    nonce: String,
 }
 
 #[derive(Deserialize)]
@@ -28,6 +29,7 @@ struct Claims {
     sub: String,
     aud: String,
     exp: u64,
+    nonce: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -83,23 +85,29 @@ fn parse_token(token: &str) -> ApiResult<(&str, &str, &str)> {
     Ok((header, payload, signature))
 }
 
-fn verify_claims_at(claims: Claims, client_id: &str, current_time: u64) -> ApiResult<String> {
+fn verify_claims_at(
+    claims: Claims,
+    client_id: &str,
+    nonce: &str,
+    current_time: u64,
+) -> ApiResult<String> {
     if !(claims.iss == "https://accounts.google.com" || claims.iss == "accounts.google.com")
         || claims.aud != client_id
         || claims.sub.is_empty()
         || claims.sub.len() > 255
         || claims.exp <= current_time
+        || claims.nonce.as_deref() != Some(nonce)
     {
         return Err(ApiError::new(401, "invalid_identity"));
     }
     Ok(claims.sub)
 }
 
-fn verify_claims(claims: Claims, client_id: &str) -> ApiResult<String> {
-    verify_claims_at(claims, client_id, now())
+fn verify_claims(claims: Claims, client_id: &str, nonce: &str) -> ApiResult<String> {
+    verify_claims_at(claims, client_id, nonce, now())
 }
 
-async fn verify_id_token(token: &str, client_id: &str) -> ApiResult<String> {
+async fn verify_id_token(token: &str, client_id: &str, nonce: &str) -> ApiResult<String> {
     let (header, payload, signature) = parse_token(token)?;
     let header_bytes = URL_SAFE_NO_PAD
         .decode(header)
@@ -155,7 +163,7 @@ async fn verify_id_token(token: &str, client_id: &str) -> ApiResult<String> {
     verifying
         .verify(format!("{header}.{payload}").as_bytes(), &signature)
         .map_err(|_| ApiError::new(401, "invalid_identity"))?;
-    verify_claims(claims, client_id)
+    verify_claims(claims, client_id, nonce)
 }
 
 fn cookie(secret: &str, subject: &str) -> ApiResult<String> {
@@ -227,7 +235,10 @@ pub(crate) async fn route(request: &mut Request, env: &Env) -> ApiResult<Respons
                 return Err(ApiError::new(403, "origin_forbidden"));
             }
             let login: Login = body(request).await?;
-            verify_id_token(&login.id_token, &client_id).await?;
+            if login.nonce.is_empty() || login.nonce.len() > 128 {
+                return Err(ApiError::new(401, "invalid_identity"));
+            }
+            verify_id_token(&login.id_token, &client_id, &login.nonce).await?;
             let mut response = json_response(
                 200,
                 &Session {
@@ -264,7 +275,7 @@ mod tests {
     #[test]
     fn rejects_wrong_issuer_audience_and_expiry() {
         let base = base_claim();
-        assert!(verify_claims_at(base, "client", 100).is_ok());
+        assert!(verify_claims_at(base, "client", "nonce", 100).is_ok());
         assert!(
             verify_claims_at(
                 Claims {
@@ -272,6 +283,7 @@ mod tests {
                     ..base_claim()
                 },
                 "client",
+                "nonce",
                 100
             )
             .is_err()
@@ -283,6 +295,7 @@ mod tests {
                     ..base_claim()
                 },
                 "client",
+                "nonce",
                 100
             )
             .is_err()
@@ -294,6 +307,7 @@ mod tests {
                     ..base_claim()
                 },
                 "client",
+                "nonce",
                 100
             )
             .is_err()
@@ -305,6 +319,7 @@ mod tests {
             sub: "123".into(),
             aud: "client".into(),
             exp: 160,
+            nonce: Some("nonce".into()),
         }
     }
 }

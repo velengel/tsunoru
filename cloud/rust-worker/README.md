@@ -33,6 +33,8 @@ Organizer and response capabilities are separate random 64-hex secrets. The brow
 
 ### Google organizer session
 
+The request includes a browser-generated `nonce`; the Worker compares it with the token claim before creating the session.
+
 `POST /api/organizer/session` accepts `{id_token}` from Google Identity Services. The Worker verifies the RS256 signature against Google's JWKS and checks `iss`, `aud`, `sub`, and `exp` before issuing a host-only HttpOnly session cookie. Configure `GOOGLE_CLIENT_ID` as a non-secret var and a random 64-hex `ORGANIZER_SESSION_SECRET` as a Worker secret. Until those settings exist, event creation/deletion keeps the legacy staging session so local fixtures remain runnable; production rollout must configure both before treating Google sign-in as enabled. ID tokens are never logged or returned.
 
 ## Event API
