@@ -48,6 +48,23 @@ pub async fn session() -> Result<(), ApiError> {
         .await
         .map(|_| ())
 }
+
+pub async fn organizer_session_status() -> Result<(), ApiError> {
+    request("GET", "/api/organizer/session", None, None)
+        .await
+        .map(|_| ())
+}
+
+pub async fn organizer_session(id_token: String, nonce: String) -> Result<(), ApiError> {
+    request(
+        "POST",
+        "/api/organizer/session",
+        Some(json!({"id_token": id_token, "nonce": nonce})),
+        None,
+    )
+    .await
+    .map(|_| ())
+}
 pub async fn login(code: String) -> Result<(), ApiError> {
     request(
         "POST",
@@ -60,6 +77,12 @@ pub async fn login(code: String) -> Result<(), ApiError> {
 }
 pub async fn logout() -> Result<(), ApiError> {
     request("DELETE", "/api/staging/session", None, None)
+        .await
+        .map(|_| ())
+}
+
+pub async fn organizer_logout() -> Result<(), ApiError> {
+    request("DELETE", "/api/organizer/session", None, None)
         .await
         .map(|_| ())
 }

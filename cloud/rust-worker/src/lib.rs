@@ -198,7 +198,7 @@ pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response
         .headers_mut()
         .set("Referrer-Policy", "no-referrer")?;
     response.headers_mut().set("X-Frame-Options", "DENY")?;
-    response.headers_mut().set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")?;
+    response.headers_mut().set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://accounts.google.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")?;
     if response.status_code() == 401 {
         response.headers_mut().set("WWW-Authenticate", "Bearer")?;
     }

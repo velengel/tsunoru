@@ -17,6 +17,9 @@ use crate::{
 use dioxus::prelude::*;
 use std::collections::BTreeMap;
 
+const GOOGLE_CLIENT_ID: &str =
+    "934625445815-ng4fgukkfmnube6v1gr6rc727qeo12dh.apps.googleusercontent.com";
+
 const CLOUD_CSS: Asset = asset!("/assets/cloud.css");
 
 #[derive(Clone, PartialEq)]
@@ -25,6 +28,23 @@ enum Access {
     Required,
     Ready,
     Failed,
+}
+
+fn is_public_event_path(path: &str) -> bool {
+    let mut parts = path.trim_start_matches('/').split('/');
+    matches!((parts.next(), parts.next(), parts.next()), (Some("events"), Some(id), None) if !id.is_empty())
+}
+
+#[cfg(test)]
+mod access_tests {
+    use super::is_public_event_path;
+
+    #[test]
+    fn shared_event_path_is_public_but_summary_and_create_are_not() {
+        assert!(is_public_event_path("/events/abc"));
+        assert!(!is_public_event_path("/events/abc/summary"));
+        assert!(!is_public_event_path("/"));
+    }
 }
 
 #[derive(Clone, PartialEq, Routable)]
@@ -44,10 +64,20 @@ pub fn CloudApp() -> Element {
     let mut access = use_context_provider(|| Signal::new(Access::Checking));
     use_effect(move || {
         spawn(async move {
-            access.set(match api::session().await {
-                Ok(()) => Access::Ready,
-                Err(error) if error.needs_access() => Access::Required,
-                Err(_) => Access::Failed,
+            let public_path = browser::path().is_some_and(|path| is_public_event_path(&path));
+            access.set(if public_path {
+                Access::Ready
+            } else {
+                match api::organizer_session_status().await {
+                    Ok(()) => Access::Ready,
+                    Err(error) if error.needs_access() => Access::Required,
+                    Err(error) if error.status == 503 => match api::session().await {
+                        Ok(()) => Access::Ready,
+                        Err(fallback) if fallback.needs_access() => Access::Required,
+                        Err(_) => Access::Failed,
+                    },
+                    Err(_) => Access::Failed,
+                }
             });
         });
     });
@@ -78,6 +108,19 @@ fn AccessEntry() -> Element {
     let mut busy = use_signal(|| false);
     let mut message = use_signal(String::new);
     rsx! {
+        GoogleSignInButton { on_success: move |(token, nonce): (String, String)| {
+            if busy() { return; }
+            busy.set(true); message.set(String::new());
+            spawn(async move {
+                match api::organizer_session(token, nonce).await {
+                    Ok(()) => access.set(Access::Ready),
+                    Err(error) => message.set(if error.status == 401 { "Googleログインを確認できませんでした。".to_owned() } else { error.message().to_owned() }),
+                }
+                busy.set(false);
+            });
+        } }
+        if !message.is_empty() { p { role: "alert", class: "form-error", "{message}" } }
+        p { class: "field-help", "回答者はログインせずに共有URLから回答できます。" }
         TrialCodeForm { busy: busy(), message: message(), on_submit: move |code: String| {
             if busy() { return; }
             busy.set(true); message.set(String::new());
@@ -89,6 +132,48 @@ fn AccessEntry() -> Element {
                 busy.set(false);
             });
         } }
+    }
+}
+
+#[component]
+fn GoogleSignInButton(on_success: EventHandler<(String, String)>) -> Element {
+    let nonce = match browser::random_key() {
+        Ok(value) => value,
+        Err(_) => String::new(),
+    };
+    use_effect(move || {
+        let nonce = nonce.clone();
+        if nonce.is_empty() {
+            return;
+        }
+        spawn(async move {
+            #[cfg(feature = "web")]
+            {
+                let script = format!(
+                    r#"
+                    (() => new Promise((resolve) => {{
+                        const start = () => {{
+                            const target = document.getElementById('google-signin-button');
+                            if (!target || !window.google?.accounts?.id) {{ resolve(''); return; }}
+                            google.accounts.id.initialize({{ client_id: '{GOOGLE_CLIENT_ID}', nonce: '{nonce}', callback: (response) => resolve(response.credential) }});
+                            google.accounts.id.renderButton(target, {{ theme: 'outline', size: 'large', width: 320 }});
+                        }};
+                        if (window.google?.accounts?.id) start(); else setTimeout(start, 500);
+                    }})()).then((token) => dioxus.send(token));
+                "#
+                );
+                let mut evaluation = document::eval(&script);
+                if let Ok(token) = evaluation.recv::<String>().await {
+                    if !token.is_empty() {
+                        on_success.call((token, nonce));
+                    }
+                }
+            }
+        });
+    });
+    rsx! {
+        document::Script { src: Some("https://accounts.google.com/gsi/client".to_owned()), defer: Some(true) }
+        div { id: "google-signin-button", class: "google-signin-button", role: "group", aria_label: "Googleでログイン" }
     }
 }
 
@@ -125,7 +210,7 @@ fn CloudHeader() -> Element {
             button { class: "text-link", r#type: "button", disabled: busy(), onclick: move |_| async move {
                 if busy() { return; }
                 busy.set(true);
-                match api::logout().await {
+                match api::organizer_logout().await {
                     Ok(()) => access.set(Access::Required),
                     Err(error) if error.needs_access() => access.set(Access::Required),
                     Err(error) => message.set(error.message().to_owned()),
