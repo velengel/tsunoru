@@ -44,7 +44,7 @@ export class FixturePool {
     }
   }
 
-  async create({ bindings = {}, omit = [], database = true, initialize = true } = {}) {
+  async create({ bindings = {}, omit = [], database = true, initialize = true, assetsDirectory } = {}) {
     this.check();
     if (this.#disposed) throw new Error("fixture pool is already closed");
     const values = { STAGING_API_TOKEN: STAGING_TOKEN, APP_ORIGIN, ...bindings };
@@ -62,6 +62,13 @@ export class FixturePool {
       bindings: values,
       d1Databases: database ? ["DB"] : [],
       d1Persist: false,
+      ...(assetsDirectory ? { assets: {
+        directory: assetsDirectory,
+        binding: "ASSETS",
+        run_worker_first: true,
+        routerConfig: { has_user_worker: true },
+        assetConfig: { not_found_handling: "single-page-application" },
+      } } : {}),
     }));
     this.#workers.add(mf);
     let db;

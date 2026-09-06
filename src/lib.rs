@@ -1,6 +1,7 @@
 //! TSUNORU's shared Dioxus application, domain model, and server boundary.
 
 use dioxus::prelude::*;
+#[cfg(feature = "native-fullstack")]
 use ui::{
     ContinueHistoryEvent, Create, History, HistoryEvent, Login, OrganizerSummary, Register,
     SharedEvent,
@@ -8,19 +9,25 @@ use ui::{
 
 #[cfg(feature = "server")]
 pub mod auth;
+pub mod browser;
 #[cfg(feature = "server")]
 pub mod calendar;
+pub mod cloud;
 pub mod domain;
+#[cfg(feature = "native-fullstack")]
 pub mod server;
+pub mod shared_ui;
 #[cfg(feature = "server")]
 pub mod storage;
+#[cfg(feature = "native-fullstack")]
 pub mod ui;
 
-const MAIN_CSS: Asset = asset!("/assets/main.css");
-const FAVICON: Asset = asset!("/assets/favicon.png");
+pub(crate) const MAIN_CSS: Asset = asset!("/assets/main.css");
+pub(crate) const FAVICON: Asset = asset!("/assets/favicon.png");
 
 /// Browser routes kept in the same Rust type as their rendered components.
 #[derive(Clone, Debug, PartialEq, Routable)]
+#[cfg(feature = "native-fullstack")]
 pub enum Route {
     #[route("/")]
     Create {},
@@ -42,6 +49,7 @@ pub enum Route {
 
 /// Fullstack application entry shared by the web and server builds.
 #[component]
+#[cfg(feature = "native-fullstack")]
 pub fn App() -> Element {
     rsx! {
         document::Title { "TSUNORU" }
@@ -54,3 +62,6 @@ pub fn App() -> Element {
         Router::<Route> {}
     }
 }
+
+#[cfg(not(feature = "native-fullstack"))]
+pub use cloud::ui::CloudApp as App;

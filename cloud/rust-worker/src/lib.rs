@@ -1,10 +1,10 @@
 mod api;
+mod session;
 
 use futures_util::StreamExt;
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::json;
 use sha2::{Digest, Sha256};
-use subtle::ConstantTimeEq;
 use worker::*;
 
 const MAX_BODY_BYTES: usize = 64 * 1024;
@@ -80,31 +80,6 @@ fn valid_origin(origin: &str) -> bool {
         && url.origin().ascii_serialization() == origin
 }
 
-fn authorize_staging(request: &Request, env: &Env) -> ApiResult<()> {
-    let unavailable = ApiError::new(503, "staging_unavailable");
-    let token = env
-        .secret("STAGING_API_TOKEN")
-        .map_err(|_| unavailable)?
-        .to_string();
-    let origin = env.var("APP_ORIGIN").map_err(|_| unavailable)?.to_string();
-    if !capability_valid(&token) || !valid_origin(&origin) {
-        return Err(unavailable);
-    }
-    let authorization = request.headers().get("authorization")?.unwrap_or_default();
-    let credential = authorization.strip_prefix("Bearer ").unwrap_or_default();
-    let expected: [u8; 32] = Sha256::digest(token.as_bytes()).into();
-    let actual: [u8; 32] = Sha256::digest(credential.as_bytes()).into();
-    if !capability_valid(credential) || !bool::from(expected.ct_eq(&actual)) {
-        return Err(ApiError::new(401, "unauthorized"));
-    }
-    if let Some(sent_origin) = request.headers().get("origin")?
-        && sent_origin != origin
-    {
-        return Err(ApiError::new(403, "origin_forbidden"));
-    }
-    Ok(())
-}
-
 async fn body<T: DeserializeOwned>(request: &mut Request) -> ApiResult<T> {
     let content_type = request.headers().get("content-type")?.unwrap_or_default();
     if !content_type
@@ -143,9 +118,17 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         return json_response(200, &json!({"status": "ok", "runtime": "rust-worker"}));
     }
     if !path.starts_with("/api/") {
+        if matches!(method, Method::Get | Method::Head) {
+            return Ok(Response::try_from(
+                env.assets("ASSETS")?.fetch_request(request).await?,
+            )?);
+        }
         return Err(ApiError::new(404, "not_found"));
     }
-    authorize_staging(&request, &env)?;
+    if path == "/api/staging/session" {
+        return session::route(&mut request, &env).await;
+    }
+    session::authorize(&request, &env)?;
     let segments: Vec<_> = path.split('/').collect();
     match (method, segments.as_slice()) {
         (Method::Post, ["", "api", "events"]) => api::create_event(&mut request, &env).await,
@@ -164,16 +147,24 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
 
 #[event(fetch)]
 pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response> {
+    let private_response = request.path().starts_with("/api/") || request.path() == "/health";
     let mut response = match route(request, env).await {
         Ok(response) => response,
         Err(error) => {
             Response::from_json(&json!({"error": {"code": error.code}}))?.with_status(error.status)
         }
     };
-    response.headers_mut().set("Cache-Control", "no-store")?;
+    if private_response || response.status_code() >= 400 {
+        response.headers_mut().set("Cache-Control", "no-store")?;
+    }
     response
         .headers_mut()
         .set("X-Content-Type-Options", "nosniff")?;
+    response
+        .headers_mut()
+        .set("Referrer-Policy", "no-referrer")?;
+    response.headers_mut().set("X-Frame-Options", "DENY")?;
+    response.headers_mut().set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")?;
     if response.status_code() == 401 {
         response.headers_mut().set("WWW-Authenticate", "Bearer")?;
     }

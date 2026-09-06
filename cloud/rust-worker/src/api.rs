@@ -1,14 +1,20 @@
 use super::*;
+use chrono::{Datelike, NaiveDate, NaiveTime, TimeZone};
+use chrono_tz::Tz;
 use serde::Deserialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+use worker::wasm_bindgen::JsValue;
 
 const MAX_CANDIDATES: usize = 20;
+const MAX_ORGANIZER_NOTE_CHARS: usize = 500;
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct NewEvent {
     id: String,
     name: String,
+    organizer_note: Option<String>,
+    time_zone: String,
     organizer_capability: String,
     candidates: Vec<Candidate>,
 }
@@ -17,7 +23,8 @@ struct NewEvent {
 #[serde(deny_unknown_fields)]
 struct Candidate {
     id: String,
-    label: String,
+    local_date: String,
+    local_time: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -48,70 +55,146 @@ struct PublicEvent {
     name: String,
 }
 
+#[derive(Deserialize, Serialize)]
+struct EventMetadata {
+    id: String,
+    name: String,
+    organizer_note: Option<String>,
+    time_zone: String,
+}
+
+fn datetime_valid(candidate: &Candidate, time_zone: Tz) -> bool {
+    let date = &candidate.local_date;
+    let time = &candidate.local_time;
+    if date.len() != 10
+        || time.len() != 5
+        || date.bytes().enumerate().any(|(index, byte)| {
+            if matches!(index, 4 | 7) {
+                byte != b'-'
+            } else {
+                !byte.is_ascii_digit()
+            }
+        })
+        || time.bytes().enumerate().any(|(index, byte)| {
+            if index == 2 {
+                byte != b':'
+            } else {
+                !byte.is_ascii_digit()
+            }
+        })
+    {
+        return false;
+    }
+    let (Ok(date), Ok(time)) = (
+        NaiveDate::parse_from_str(date, "%Y-%m-%d"),
+        NaiveTime::parse_from_str(time, "%H:%M"),
+    ) else {
+        return false;
+    };
+    // Tz uses its bundled IANA rules; chrono::Local would use JS Date on wasm
+    // and silently choose an instant for missing or ambiguous wall-clock times.
+    date.year() >= 1
+        && time_zone
+            .from_local_datetime(&date.and_time(time))
+            .single()
+            .is_some()
+}
+
 pub(super) async fn create_event(request: &mut Request, env: &Env) -> ApiResult<Response> {
     let mut input: NewEvent = body(request).await?;
     input.name = input.name.trim().to_owned();
+    input.organizer_note = input
+        .organizer_note
+        .as_deref()
+        .map(str::trim)
+        .filter(|note| !note.is_empty())
+        .map(ToOwned::to_owned);
+    input.time_zone = input.time_zone.trim().to_owned();
     if !identifier_valid(&input.id)
         || !name_valid(&input.name)
+        || input
+            .organizer_note
+            .as_deref()
+            .is_some_and(|note| note.chars().count() > MAX_ORGANIZER_NOTE_CHARS)
+        || input.time_zone.len() > 64
         || !capability_valid(&input.organizer_capability)
         || input.candidates.is_empty()
         || input.candidates.len() > MAX_CANDIDATES
     {
         return Err(ApiError::invalid());
     }
+    let time_zone = input
+        .time_zone
+        .parse::<Tz>()
+        .map_err(|_| ApiError::invalid())?;
     input.candidates.sort_by(|a, b| a.id.cmp(&b.id));
+    let mut local_datetimes = BTreeSet::new();
     for candidate in &mut input.candidates {
-        candidate.label = candidate.label.trim().to_owned();
-        if !identifier_valid(&candidate.id) || !name_valid(&candidate.label) {
+        candidate.local_date = candidate.local_date.trim().to_owned();
+        candidate.local_time = candidate.local_time.trim().to_owned();
+        if !identifier_valid(&candidate.id)
+            || !datetime_valid(candidate, time_zone)
+            || !local_datetimes.insert((candidate.local_date.clone(), candidate.local_time.clone()))
+        {
             return Err(ApiError::invalid());
         }
     }
     if input.candidates.windows(2).any(|w| w[0].id == w[1].id) {
         return Err(ApiError::invalid());
     }
+    let capability_hash = hash(&input.organizer_capability);
+    let payload_hash = hash(
+        &serde_json::to_string(&(
+            &input.id,
+            &input.name,
+            &input.organizer_note,
+            &input.time_zone,
+            &input.candidates,
+        ))
+        .map_err(|_| ApiError::invalid())?,
+    );
+    let candidates = serde_json::to_string(&input.candidates).map_err(|_| ApiError::invalid())?;
     let db = env.d1("DB")?;
     // changes() refers to the immediately preceding statement in this atomic batch.
     // An ID conflict must not append candidates to another organizer's event.
     let result = db.batch(vec![
-        db.prepare("INSERT INTO events(id,name,organizer_capability_hash) VALUES(?1,?2,?3) ON CONFLICT(id) DO NOTHING")
-            .bind(&[input.id.clone().into(), input.name.clone().into(), hash(&input.organizer_capability).into()])?,
-        db.prepare("INSERT INTO candidates(event_id,id,label) SELECT ?1,json_extract(value,'$.id'),json_extract(value,'$.label') FROM json_each(?2) WHERE changes() = 1")
-            .bind(&[input.id.clone().into(), serde_json::to_string(&input.candidates).map_err(|_| ApiError::invalid())?.into()])?,
+        db.prepare("INSERT INTO events(id,name,organizer_note,time_zone,organizer_capability_hash,creation_payload_hash) VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO NOTHING")
+            .bind(&[input.id.clone().into(), input.name.clone().into(), input.organizer_note.clone().map_or(JsValue::NULL, Into::into), input.time_zone.clone().into(), capability_hash.clone().into(), payload_hash.clone().into()])?,
+        db.prepare("INSERT INTO candidates(event_id,id,local_date,local_time) SELECT ?1,json_extract(value,'$.id'),json_extract(value,'$.local_date'),json_extract(value,'$.local_time') FROM json_each(?2) WHERE changes() = 1")
+            .bind(&[input.id.clone().into(), candidates.into()])?,
+        db.prepare("SELECT id,name FROM events WHERE id=?1 AND organizer_capability_hash=?2 AND creation_payload_hash=?3")
+            .bind(&[input.id.into(), capability_hash.into(), payload_hash.into()])?,
     ]).await?;
-    if result[0]
+    let saved = result[2]
+        .results::<PublicEvent>()?
+        .into_iter()
+        .next()
+        .ok_or(ApiError::new(409, "event_conflict"))?;
+    let created = result[0]
         .meta()?
         .and_then(|m| m.changes)
         .unwrap_or_default()
-        == 0
-    {
-        return Err(ApiError::new(409, "event_conflict"));
-    }
-    json_response(
-        201,
-        &PublicEvent {
-            id: input.id,
-            name: input.name,
-        },
-    )
+        > 0;
+    json_response(if created { 201 } else { 200 }, &saved)
 }
 
 pub(super) async fn get_event(id: &str, env: &Env) -> ApiResult<Response> {
     let db = env.d1("DB")?;
-    let event: PublicEvent = db
-        .prepare("SELECT id,name FROM events WHERE id=?1")
+    let event: EventMetadata = db
+        .prepare("SELECT id,name,organizer_note,time_zone FROM events WHERE id=?1")
         .bind(&[id.into()])?
         .first(None)
         .await?
         .ok_or(ApiError::new(404, "event_not_found"))?;
     let candidates: Vec<Candidate> = db
-        .prepare("SELECT id,label FROM candidates WHERE event_id=?1 ORDER BY id")
+        .prepare("SELECT id,local_date,local_time FROM candidates WHERE event_id=?1 ORDER BY id")
         .bind(&[id.into()])?
         .all()
         .await?
         .results()?;
     json_response(
         200,
-        &json!({"id":event.id,"name":event.name,"candidates":candidates}),
+        &json!({"id":event.id,"name":event.name,"organizer_note":event.organizer_note,"time_zone":event.time_zone,"candidates":candidates}),
     )
 }
 
