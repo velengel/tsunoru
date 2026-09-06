@@ -141,6 +141,9 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         (Method::Get, ["", "api", "events", id, "responses"]) if identifier_valid(id) => {
             api::get_responses(id, &request, &env).await
         }
+        (Method::Delete, ["", "api", "events", id]) if identifier_valid(id) => {
+            api::delete_event(id, &request, &env).await
+        }
         _ => Err(ApiError::new(404, "not_found")),
     }
 }

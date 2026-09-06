@@ -288,6 +288,21 @@ export async function verifyStagingApi(pool) {
   }
   console.log("PASS failed D1 batches roll back all rows and hide internal diagnostics");
 
+  await createEvent(fixture, "delete-event");
+  await submit(fixture, "delete-event", capability(50), answer("削除対象"), 201);
+  await request(fixture, "/api/events/delete-event", {
+    method: "DELETE", headers: organizerHeaders(capability(51)), status: 403,
+  });
+  const deleted = await request(fixture, "/api/events/delete-event", {
+    method: "DELETE", headers: organizerHeaders(), status: 200,
+  });
+  assert.deepEqual(deleted.json, { deleted: true });
+  await request(fixture, "/api/events/delete-event", { status: 404 });
+  assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM candidates WHERE event_id='delete-event'").first()).count, 0);
+  assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM responses WHERE event_id='delete-event'").first()).count, 0);
+  assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM answers WHERE event_id='delete-event'").first()).count, 0);
+  console.log("PASS organizer-only event deletion removes the complete event graph");
+
   const unconfiguredDatabase = await pool.create({ database: false });
   const failure = await request(unconfiguredDatabase, "/api/events/missing", { status: 500 });
   assert.deepEqual(failure.json, { error: { code: "internal_error" } });
