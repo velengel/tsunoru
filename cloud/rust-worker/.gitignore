@@ -1,4 +1,5 @@
 /build/
+/.staging-build-*/
 /public/
 /target/
 /.wrangler/

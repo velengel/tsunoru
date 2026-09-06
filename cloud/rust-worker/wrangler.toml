@@ -9,7 +9,7 @@ preview_urls = false
 command = "node build-staging.mjs"
 
 [assets]
-directory = "./public"
+directory = "./build/public"
 binding = "ASSETS"
 run_worker_first = true
 not_found_handling = "single-page-application"

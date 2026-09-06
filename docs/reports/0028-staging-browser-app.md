@@ -33,6 +33,12 @@ CSR の確定コマンドは `dx build --web --release --no-default-features --f
 CLI が最適化エラーを記録しても終了コード0となる試行があったため、コードだけで成功を判断しなかった。
 デバッグ情報を除いた再試行では最適化エラーがなく、実際の Wasm 画面操作も通った。
 
+初回 hosted review の [生成物回収の指摘](https://github.com/velengel/tsunoru/pull/13#discussion_r3942568289) は、失敗したビルドが正常な配置候補へ混ざるため修正した。
+合成 CLI で Worker が途中の `index.js` を書いて失敗させ、既存 bundle にそのファイルが残る失敗を先に確認した。
+修正後は Worker と `build/public/` を同じ一時 bundle で完成させてから切り替える。
+失敗、SIGINT、SIGTERM、成功の4ケースで、直前の完成物の保全、成功時の更新、所有した一時出力と子プロセスの回収を確認した。
+実際の `npm run deploy:check` と Worker の全 HTTP 試験も再実行して通った。アプリの6ファイルは修正前と一致し、変更は配置用の生成手順に限られる。
+
 ## ブラウザーで観測したこと
 
 専用 worktree の `http://localhost:8791` を使用し、ローカル D1 と合成データだけを操作した。

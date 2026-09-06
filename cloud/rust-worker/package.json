@@ -5,7 +5,7 @@
   "scripts": {
     "build": "worker-build --release",
     "build:app": "node build-staging.mjs",
-    "test": "node verify-local.mjs && node test/verify-cleanup.mjs",
+    "test": "node verify-local.mjs && node test/verify-cleanup.mjs && node test/staging-build.mjs",
     "check": "npm run build && npm test",
     "deploy:check": "wrangler deploy --dry-run --env staging",
     "dev:app": "wrangler dev --local --env staging --ip 127.0.0.1 --port 8791 --var APP_ORIGIN:http://localhost:8791"

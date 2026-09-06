@@ -20,4 +20,6 @@ native-fullstack を default に残し、cloud-web は no-default-features で�
 
 Static Assets の SPA fallback が API 拒否を置き換えないよう Worker-first routing を設定する。asset に秘密や利用者データを含めず、API の no-store と静的ファイルの配信を区別する。
 
+Worker と assets は一時ディレクトリでまとめて構築し、成功後に `build/` を置き換える。失敗・中断では途中の出力を回収し、直前の完成物を保つ。ファイルシステムの異常で復元できない場合は、唯一のバックアップを消さずに場所を報告する。コンパイラーの cache は保持する。
+
 根拠: [Static Assets routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/)、[SPA routing](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)、[Dioxus build](https://dioxuslabs.com/learn/0.7/essentials/fullstack/project_setup/)。既存運用は `koji-todo/wrangler.jsonc`、`voice-workbench/cloud/worker/wrangler.jsonc`。

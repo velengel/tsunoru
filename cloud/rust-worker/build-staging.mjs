@@ -1,14 +1,21 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { cp, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const destination = join(directory, "public");
+const destination = join(directory, "build");
 let child;
 let interrupted;
+let temporary;
+let previous;
+let promoted = false;
+let retainRecovery = false;
+const checkInterrupted = () => {
+  if (interrupted) throw new Error(`build interrupted by ${interrupted}`);
+};
 const interrupt = (signal) => {
   interrupted ||= signal;
   // Each invocation owns one child process group; never stop another dev server.
@@ -23,7 +30,7 @@ process.once("SIGINT", onInt);
 process.once("SIGTERM", onTerm);
 
 async function run(command, args, cwd, capture = false) {
-  if (interrupted) throw new Error(`build interrupted by ${interrupted}`);
+  checkInterrupted();
   return new Promise((resolve, reject) => {
     child = spawn(command, args, {
       cwd, detached: true, stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
@@ -40,15 +47,17 @@ async function run(command, args, cwd, capture = false) {
 }
 
 try {
+  temporary = await mkdtemp(join(directory, ".staging-build-"));
+  const assets = join(temporary, "assets");
+  const bundle = join(temporary, "bundle");
   const metadata = JSON.parse(await run("cargo", ["metadata", "--no-deps", "--format-version", "1", "--locked"], root, true));
   const source = join(metadata.target_directory, "dx", "tsunoru", "release", "web", "public");
   // Dioxus can retain old hashed assets across builds. Publish only this build.
   await rm(source, { recursive: true, force: true });
   await run("dx", ["build", "--web", "--release", "--no-default-features", "--features", "cloud-web", "--debug-symbols=false", "--locked"], root);
   const html = await readFile(join(source, "index.html"), "utf8");
-  // Work only on this script's ignored, generated staging output.
-  await rm(destination, { recursive: true, force: true });
-  await cp(source, destination, { recursive: true });
+  // Assemble privately; a failed copy or compiler must not replace a good bundle.
+  await cp(source, assets, { recursive: true });
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   if (scripts.length !== 1 || !/\bsrc\s*=/.test(scripts[0][1]) || scripts[0][2].trim()) {
     throw new Error("expected one external Dioxus CSR loader compatible with script-src self");
@@ -66,15 +75,36 @@ try {
       }
     }
   }
-  await inspect(destination);
-  await run("worker-build", ["--release"], directory);
-  await mkdir(join(directory, "build"), { recursive: true });
-  await writeFile(join(directory, "build", "asset-sha256.txt"), `${digests.sort().join("\n")}\n`);
+  await inspect(assets);
+  await run("worker-build", ["--release", "--out-dir", relative(directory, bundle)], directory);
+  await rename(assets, join(bundle, "public"));
+  await writeFile(join(bundle, "asset-sha256.txt"), `${digests.sort().join("\n")}\n`);
+  checkInterrupted();
+  try {
+    await rename(destination, join(temporary, "previous-build"));
+    previous = join(temporary, "previous-build");
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  checkInterrupted();
+  await rename(bundle, destination);
+  promoted = true;
+  checkInterrupted();
   console.log(`PASS staging build: ${digests.length} assets, external CSR loader, Rust Worker`);
 } catch (error) {
   process.exitCode = interrupted === "SIGINT" ? 130 : interrupted === "SIGTERM" ? 143 : 1;
   console.error(error.message);
+  try {
+    if (promoted) await rm(destination, { recursive: true, force: true });
+    if (previous) await rename(previous, destination);
+  } catch (recoveryError) {
+    // Do not erase the last good bundle if the filesystem prevents restoration.
+    retainRecovery = true;
+    console.error(`Could not restore the previous build: ${recoveryError.message}. Recovery files: ${temporary}`);
+  }
 } finally {
+  if (temporary && !retainRecovery) {
+    try { await rm(temporary, { recursive: true, force: true }); }
+    catch (error) { process.exitCode ||= 1; console.error(`Could not remove build staging directory ${temporary}: ${error.message}`); }
+  }
   process.removeListener("SIGINT", onInt);
   process.removeListener("SIGTERM", onTerm);
 }
