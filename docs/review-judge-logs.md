@@ -19,7 +19,7 @@ Worker の独立した self-review では、主催者 hash、Cookie と Origin�
 CSS や Rust の文字列をなぞる2試験は採用せず、保存と復元、表示される結果の9試験、実ブラウザーの測定を根拠にした。
 account、個別失効、回答編集、旧 DB migration の追加は今回採らず、[#12](https://github.com/velengel/tsunoru/issues/12) で要否を判断する。
 
-hosted Codex review の初回バッチは下記 R050 の1件を対応した。最終確認を含めて最大2往復で停止し、最終 head の結果は PR 上で確認する。
+hosted Codex review は2往復を完了し、R050/R051 を修正・返信・解決した。最後にレビューされた head は `6df16f7` で、その後の R051 修正と判断記録は再レビューしていない。上限に従い、3回目は依頼しない。
 remote D1 作成の承認待ちはコードレビューの承認と分ける。
 
 ### R050: ビルド失敗時の生成物（初回 hosted review）
@@ -31,6 +31,16 @@ remote D1 作成の承認待ちはコードレビューの承認と分ける。
 [b99ef89](https://github.com/velengel/tsunoru/commit/b99ef89723b1364354c4fb1521573ed774672781) で Worker と assets を一時 bundle にまとめ、両方の成功後に切り替える。失敗・SIGINT・SIGTERM・成功の4ケースで出力と所有子プロセスを確認し、実際の dry-run と Worker HTTP 試験も通した。[report 0028](reports/0028-staging-browser-app.md) に証拠を記録した。
 
 検証・push 後に [コミット付きの対応返信](https://github.com/velengel/tsunoru/pull/13#discussion_r3942587174) を送り、thread の `isResolved: true` を確認した。初回の1往復はここで完了。最終確認は残り1回以内とし、結果を転記するだけの未レビュー commit は追加しない。
+
+### R051: 失敗したコマンドの補助プロセス（2往復目）
+
+2026-09-06。`6df16f7` に対する [2往復目の review](https://github.com/velengel/tsunoru/pull/13#pullrequestreview-5123672225) は完了し、新しい [指摘](https://github.com/velengel/tsunoru/pull/13#discussion_r3942598160) は1件だった。
+
+**修正**。実 CLI での発生は未観測だが、コンパイラーが失敗して補助プロセスだけが残る合成ケースで再現した。公開画面の不具合とは区別する。所有プロセスを残さない既存要件に合い、対象を終了処理と再現試験に絞れるため、今回は対応する。
+
+[93b3633](https://github.com/velengel/tsunoru/commit/93b36337200bfca07082836ae80d0e30444850aa) で失敗後も group ID を保持し、TERM、期限付き待機、必要時の KILL を行ってから pipe の終了を待つ。TERM を無視する補助プロセスを含め、失敗・SIGINT・SIGTERM・成功の4ケースと実際の dry-run が通った。[report 0028](reports/0028-staging-browser-app.md) に再現と検証を記録した。
+
+検証・push 後に [コミット付きの対応返信](https://github.com/velengel/tsunoru/pull/13#discussion_r3942606217) を送り、thread の `isResolved: true` を確認した。受領した指摘はすべて判断済みで、2往復を終える。この修正と履歴の commit は hosted review 未実施であり、承認済みとは扱わない。
 
 ## PR #10: #9 の判断を実装から再評価（2026-09-06）
 
