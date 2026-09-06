@@ -17,9 +17,6 @@ use crate::{
 use dioxus::prelude::*;
 use std::collections::BTreeMap;
 
-const GOOGLE_CLIENT_ID: &str =
-    "934625445815-ng4fgukkfmnube6v1gr6rc727qeo12dh.apps.googleusercontent.com";
-
 const CLOUD_CSS: Asset = asset!("/assets/cloud.css");
 const GOOGLE_SIGNIN_JS: Asset = asset!("/assets/google-signin.js");
 
@@ -73,14 +70,17 @@ pub fn CloudApp() -> Element {
                 match api::organizer_session_status().await {
                     Ok(()) => Access::Ready,
                     Err(error) if error.needs_access() => Access::Required,
-                    Err(error) if error.status == 503 => match api::session().await {
-                        Ok(()) => {
-                            legacy_auth.set(true);
-                            Access::Ready
+                    Err(error) if error.status == 503 => {
+                        legacy_auth.set(true);
+                        match api::session().await {
+                            Ok(()) => {
+                                legacy_auth.set(true);
+                                Access::Ready
+                            }
+                            Err(fallback) if fallback.needs_access() => Access::Required,
+                            Err(_) => Access::Failed,
                         }
-                        Err(fallback) if fallback.needs_access() => Access::Required,
-                        Err(_) => Access::Failed,
-                    },
+                    }
                     Err(_) => Access::Failed,
                 }
             });
@@ -117,7 +117,7 @@ fn AccessEntry() -> Element {
         GoogleSignInButton {}
         if !message.is_empty() { p { role: "alert", class: "form-error", "{message}" } }
         p { class: "field-help", "回答者はログインせずに共有URLから回答できます。" }
-        TrialCodeForm { busy: busy(), message: message(), on_submit: move |code: String| {
+        if legacy_auth() { TrialCodeForm { busy: busy(), message: message(), on_submit: move |code: String| {
             if busy() { return; }
             busy.set(true); message.set(String::new());
             spawn(async move {
@@ -128,6 +128,7 @@ fn AccessEntry() -> Element {
                 busy.set(false);
             });
         } }
+        }
     }
 }
 
@@ -139,7 +140,7 @@ fn GoogleSignInButton() -> Element {
     };
     rsx! {
         document::Script { src: Some(GOOGLE_SIGNIN_JS.to_string()), defer: Some(true) }
-        div { id: "google-signin-button", class: "google-signin-button", role: "group", aria_label: "Googleでログイン", "data-client-id": GOOGLE_CLIENT_ID, "data-nonce": nonce }
+        div { id: "google-signin-button", class: "google-signin-button", role: "group", aria_label: "Googleでログイン", "data-nonce": nonce }
     }
 }
 

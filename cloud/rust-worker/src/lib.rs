@@ -132,6 +132,10 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
     if path == "/api/organizer/session" {
         return organizer_auth::route(&mut request, &env).await;
     }
+    if path == "/api/organizer/config" && method == Method::Get {
+        let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+        return json_response(200, &json!({"client_id": client_id}));
+    }
     let segments: Vec<_> = path.split('/').collect();
     let google_enabled = env
         .var("GOOGLE_CLIENT_ID")

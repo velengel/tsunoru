@@ -331,3 +331,14 @@ The user subsequently stopped this loop and set a two-round limit. [ADR 0043](AD
 - [R056](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796373) **fix**: marked the implemented Story tasks complete while retaining browser verification as pending.
 
 All five findings affect a concrete runtime or documentation defect and were fixed together in commit `33e0299` after local verification. A second review is required for the new head within the two-round limit.
+
+## R057-R060: Codex review for PR #20 second round (2026-09-06)
+
+[Second-round review](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827723) completed against `3cf3c2b`; four findings were returned.
+
+- [R057](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827723) **fix**: the watcher now requires the completed summary's reviewed SHA to equal the current PR HEAD.
+- [R058](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827724) **fix**: the watcher now fetches inline review comments from the pull-request comments API before declaring the batch collected.
+- [R059](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827726) **fix**: the legacy trial-code form is rendered only when the staging fallback mode was selected.
+- [R060](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827727) **fix**: the browser bridge obtains the configured public Client ID from `/api/organizer/config`, keeping it aligned with Worker configuration.
+
+All findings were necessary for correct review convergence or runtime behavior and were fixed together in commit `366adbd`. This reaches the two-round autonomous review limit; no further review is requested.
