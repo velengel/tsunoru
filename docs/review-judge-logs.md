@@ -287,6 +287,14 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## レビュー対応の停止
 
+## R031: 実URL書き込み検証の後始末境界（2026-09-06）
+
+- 指摘：自動レビューによる検証コマンド拒否（専用D1への合成データ書き込み後、失敗・割り込み時の削除保証が不足）。
+- 判断：対応が必要。実URLで作成・回答を検証するには、イベント全体を主催者権限で削除できるAPIが必要で、検証ツールだけの管理者削除ではアプリの認可境界を確認できない。
+- 状態：削除APIの失敗テスト、実装、ローカル統合検証まで完了。実URLへの再検証はWorker反映後に行う。
+- 修正：このPRの削除API実装と[ADR 0059](ADR/0059-delete-staging-events-by-organizer-capability.md)。
+- 履歴：先行試行は後始末の強制終了保証不足で拒否された。関連行を一つのD1 batchで削除し、作成・回答・集計・削除を同じ合成イベントで再検証する方針へ変更した。
+
 The user subsequently stopped this loop and set a two-round limit. [ADR 0043](ADR/0043-stop-review-follow-up-after-two-rounds.md) supersedes indefinite convergence: assess relevance and impact, record defer/no-change decisions where justified, and stop after two rounds with a merge-decision report. The current loop ends without another review request; an already running review is reported as pending rather than awaited indefinitely.
 
 今回のR010とR011は検証先の隔離という共通の観点で、一つの対応バッチにまとめます。

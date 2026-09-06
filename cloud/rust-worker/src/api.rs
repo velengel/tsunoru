@@ -347,3 +347,55 @@ pub(super) async fn get_responses(id: &str, request: &Request, env: &Env) -> Api
         &json!({"responses":responses.into_values().collect::<Vec<_>>()}),
     )
 }
+
+pub(super) async fn delete_event(id: &str, request: &Request, env: &Env) -> ApiResult<Response> {
+    let capability = header_capability(request, "x-organizer-capability")?;
+    let capability_hash = hash(&capability);
+    let db = env.d1("DB")?;
+    let authorized = db
+        .prepare("SELECT id,name FROM events WHERE id=?1 AND organizer_capability_hash=?2")
+        .bind(&[id.into(), capability_hash.clone().into()])?
+        .first::<PublicEvent>(None)
+        .await?;
+    if authorized.is_none() {
+        let exists = db
+            .prepare("SELECT id,name FROM events WHERE id=?1")
+            .bind(&[id.into()])?
+            .first::<PublicEvent>(None)
+            .await?;
+        return Err(if exists.is_some() {
+            ApiError::new(403, "forbidden")
+        } else {
+            ApiError::new(404, "event_not_found")
+        });
+    }
+    // Delete the complete event graph in one atomic batch. Every statement
+    // repeats the owner check so a future concurrent change cannot broaden
+    // the deletion target.
+    let result = db
+        .batch(vec![
+            db.prepare(
+                "DELETE FROM answers WHERE event_id=?1 AND EXISTS (SELECT 1 FROM events WHERE id=?1 AND organizer_capability_hash=?2)",
+            )
+            .bind(&[id.into(), capability_hash.clone().into()])?,
+            db.prepare(
+                "DELETE FROM responses WHERE event_id=?1 AND EXISTS (SELECT 1 FROM events WHERE id=?1 AND organizer_capability_hash=?2)",
+            )
+            .bind(&[id.into(), capability_hash.clone().into()])?,
+            db.prepare(
+                "DELETE FROM candidates WHERE event_id=?1 AND EXISTS (SELECT 1 FROM events WHERE id=?1 AND organizer_capability_hash=?2)",
+            )
+            .bind(&[id.into(), capability_hash.clone().into()])?,
+            db.prepare("DELETE FROM events WHERE id=?1 AND organizer_capability_hash=?2")
+                .bind(&[id.into(), capability_hash.into()])?,
+        ])
+        .await?;
+    let deleted = result[3]
+        .meta()?
+        .and_then(|meta| meta.changes)
+        .unwrap_or_default();
+    if deleted != 1 {
+        return Err(ApiError::new(409, "delete_conflict"));
+    }
+    json_response(200, &json!({"deleted": true}))
+}

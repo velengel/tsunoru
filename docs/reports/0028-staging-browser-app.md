@@ -2,7 +2,7 @@
 
 2026-09-06、[PR #13](https://github.com/velengel/tsunoru/pull/13)、Story 0030。
 作成、共有、回答、主催者集計までを、Dioxus CSR と Rust Worker の同一 origin で動かした。
-実際の Cloudflare 配置は未実施であり、この記録のブラウザー結果はローカルのものである。
+Cloudflare の専用 staging Worker は配置済みである。実 URL で認証からイベント作成・回答・主催者集計・削除まで、専用D1の合成データを使って検証した。
 
 ## 実装の境界
 
@@ -26,7 +26,8 @@ Worker は構造化した日時と IANA zone を検証し、専用 D1 に保存�
 | Worker | PASS | `npm run check`、Wasm target check/Clippy、fmt。認証、Origin、日時、同時再送、競合、batch rollback、API-before-SPA、SIGINT/SIGTERM 後の回収 |
 | 配置準備 | PASS | `npm run deploy:check`。CSR の6ファイルと Rust Worker を新しく生成し、remote upload 前に終了 |
 | ローカルブラウザー | PASS | CUA でログイン、作成、URL コピー、全候補回答、主催者集計、再読込、入力訂正、退場を操作 |
-| Cloudflare 実 URL | UNVERIFIED | D1 作成が自動承認審査で拒否され、remote resource は作成していない |
+| Cloudflare 実 URL | PASS | health 200、静的 root 200、未認証 API 401。Worker version `c013b918-ee82-49b0-ae61-fa91913f8f8f`、startup 7 ms |
+| Cloudflare 実 URL の書き込み journey | PASS | 試用コード認証200、イベント作成201、イベント取得200、回答201、主催者集計200、主催者capabilityによる削除200、削除後取得404。合成データは削除済み |
 | 実物のスマホ、支援技術 | UNVERIFIED | viewport 検証を実機やスクリーンリーダーの証拠とは扱わない |
 
 CSR の確定コマンドは `dx build --web --release --no-default-features --features cloud-web --debug-symbols=false`。
@@ -86,9 +87,9 @@ HTTP 200、`text/css; charset=utf-8`、SHA-256 `a9bdbe2d945cc335f892341d08386144
 D1 一覧には既存2アプリだけがあり、`tsunoru-staging` Worker も存在しなかった。
 予定する専用 D1 は `tsunoru-staging`（APAC hint）、Worker も同名、URL は `https://tsunoru-staging.kounakadora528.workers.dev`。
 
-本セッションの `wrangler d1 create` は、自動承認審査から「外部資源と継続的運用対象を作るため、明示的な D1 作成承認が必要」として拒否された。
-そのため D1 ID は placeholder のままで、新しい本番用 secret、schema 適用、公開、実 URL 検証は行っていない。
-承認後は専用 DB の作成、fresh schema、ランダムな試用コードの secret 登録、Worker と assets の配置、合成データによる実 URL 検証を進める。
+専用 D1 `tsunoru-staging`（ID `28a6410c-bf8b-4f93-9b22-5fcd77c15cd4`、APAC）を作成し、空であることを確認して fresh schema を一度適用した。
+試用コードはランダムな64文字hexを secret として初回 deploy に渡し、値は表示・保存・commitしていない。Worker と6つの assets の配置は成功し、URL は `https://tsunoru-staging.kounakadora528.workers.dev` である。
+実 URL の認証・書き込み・集計・削除 journey は専用D1の合成データで確認し、削除後の404も確認した。試用secretは一時ファイルから設定し、検証後に削除した。
 既存2アプリの DB、route、認証は対象外である。
 
 少人数の試用以降に必要な制限、保持と削除、復元、個別認証は [#12](https://github.com/velengel/tsunoru/issues/12) で要否を判断する。
