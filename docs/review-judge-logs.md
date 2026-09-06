@@ -19,8 +19,18 @@ Worker の独立した self-review では、主催者 hash、Cookie と Origin�
 CSS や Rust の文字列をなぞる2試験は採用せず、保存と復元、表示される結果の9試験、実ブラウザーの測定を根拠にした。
 account、個別失効、回答編集、旧 DB migration の追加は今回採らず、[#12](https://github.com/velengel/tsunoru/issues/12) で要否を判断する。
 
-hosted Codex review はこれから初回のバッチを確認する。最大2往復で停止し、最終 head の結果は PR 上で確認する。
+hosted Codex review の初回バッチは下記 R050 の1件を対応した。最終確認を含めて最大2往復で停止し、最終 head の結果は PR 上で確認する。
 remote D1 作成の承認待ちはコードレビューの承認と分ける。
+
+### R050: ビルド失敗時の生成物（初回 hosted review）
+
+2026-09-06。[review summary](https://github.com/velengel/tsunoru/pull/13#issuecomment-5555942089) は `109d276` を対象に完了し、[指摘](https://github.com/velengel/tsunoru/pull/13#discussion_r3942568289) は1件だった。
+
+**修正**。途中の Worker build が失敗すると、新しい assets と不完全な Worker が公開候補のディレクトリに混ざる。限定試用を安全に配置する目的に直接関係し、合成 CLI でも再現したため、必要な対応と判断した。
+
+[b99ef89](https://github.com/velengel/tsunoru/commit/b99ef89723b1364354c4fb1521573ed774672781) で Worker と assets を一時 bundle にまとめ、両方の成功後に切り替える。失敗・SIGINT・SIGTERM・成功の4ケースで出力と所有子プロセスを確認し、実際の dry-run と Worker HTTP 試験も通した。[report 0028](reports/0028-staging-browser-app.md) に証拠を記録した。
+
+検証・push 後に [コミット付きの対応返信](https://github.com/velengel/tsunoru/pull/13#discussion_r3942587174) を送り、thread の `isResolved: true` を確認した。初回の1往復はここで完了。最終確認は残り1回以内とし、結果を転記するだけの未レビュー commit は追加しない。
 
 ## PR #10: #9 の判断を実装から再評価（2026-09-06）
 
