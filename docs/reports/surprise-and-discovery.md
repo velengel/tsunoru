@@ -686,3 +686,9 @@ Dioxus 0.7.10の最小server構成もmioのWasm非対応で失敗した一方、
 既存domainをWasmで使う場合はserver featureを維持しないとtimezone検証が弱くなる。
 D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した。
 根拠と限界は[小実験結果](0023-cloudflare-runtime-spike.md)を正とする。
+
+## 2026-09-06 Google organizer auth
+
+- Rust WorkerでもRSA署名検証を依存クレートだけでWasm対象へコンパイルできた。GoogleのJWKSはログイン時に取得するため、鍵キャッシュとローテーション運用は次のStoryで詰める。
+- Google設定が未投入の既存staging fixtureを壊さないため、`GOOGLE_CLIENT_ID`が空の環境では従来の試用コードを残す段階導入になった。公開環境でGoogle必須にするには両設定の投入が前提になる。
+- `rustfmt --emit stdout`を入口ファイルへ直接書き戻すと、モジュール出力のパス見出しを含めて上書きし得る。今後は一時ディレクトリで検査し、直接書き戻さない。

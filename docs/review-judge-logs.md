@@ -312,3 +312,10 @@ The user subsequently stopped this loop and set a two-round limit. [ADR 0043](AD
 - R030（スコープ）: **変更不要**。イベント作成までの縦切りは ADR 0049 の段階的移行方針に一致する。
 
 実装・検証: [c2145ae](https://github.com/velengel/tsunoru/commit/c2145ae)。
+
+## R032-R034: organizer Google auth (2026-09-06)
+
+- R032 [集計APIの主催者セッション保護](https://github.com/velengel/tsunoru/pull/15#discussion_r3943704094): **要対応**。Google設定有効時も回答一覧だけがcapability単独で読め、PRの「主催者の集計をセッションで保護する」という目的に反するため、GET responsesを主催者認証パスへ追加した。
+- R033 [ブラウザクライアント未接続](https://github.com/velengel/tsunoru/pull/15#discussion_r3943704095): **要対応（ただし別Issueへ分離）**。現在のUIは試用コードのみでGoogle ID Tokenを送れず、Google設定を有効にすると作成不能になる。今回のWorker境界は保ち、GISボタン接続は別Issueで実装する前提をPR本文へ明記した。
+- R034 [verified subject未保持](https://github.com/velengel/tsunoru/pull/15#discussion_r3943704096): **要対応**。空subjectを署名するとGoogleアカウント間でセッションが区別できず、認証境界が形だけになるため、subjectを署名Cookieへ含めた。DB所有権との関連付けは別Storyとした。
+- 状態：R032・R034を同一修正バッチで対応・検証済み。R033はブラウザUI接続を別Issueへ切り出し、現PRでは段階導入条件を文書化。修正コミット：[8012189](https://github.com/velengel/tsunoru/commit/8012189daca9d248c31c77db1ff5d3ea8a4aa1a3)。

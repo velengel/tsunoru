@@ -2,6 +2,8 @@
 
 ## Development workflow
 
+- 実装前の理解ゲートは会話内で基本2問だけ確認する。設計の判断軸を説明できることを目的とし、必要な場合でも3問を上限にする。3問を超える理解確認が必要な規模は、StoryまたはPRを分割する。
+
 - Before implementation, create or update a Story under `docs/story/`.
 - Every Story must contain `context`, `definition of done`, `to do`, and `concern` sections derived from the request at hand.
 - Before implementing a product, architecture, dependency, tooling, or operating-policy decision, record it under `docs/ADR/`.

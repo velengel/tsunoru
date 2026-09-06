@@ -1,4 +1,5 @@
 mod api;
+mod organizer_auth;
 mod session;
 
 use futures_util::StreamExt;
@@ -128,14 +129,44 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
     if path == "/api/staging/session" {
         return session::route(&mut request, &env).await;
     }
-    session::authorize(&request, &env)?;
+    if path == "/api/organizer/session" {
+        return organizer_auth::route(&mut request, &env).await;
+    }
     let segments: Vec<_> = path.split('/').collect();
+    let google_enabled = env
+        .var("GOOGLE_CLIENT_ID")
+        .map(|v| !v.to_string().trim().is_empty())
+        .unwrap_or(false);
+    let organizer_mutation = matches!(
+        (&method, segments.as_slice()),
+        (Method::Post, ["", "api", "events"])
+            | (Method::Get, ["", "api", "events", _, "responses"])
+            | (Method::Delete, ["", "api", "events", _])
+    );
+    if organizer_mutation {
+        if google_enabled {
+            organizer_auth::authorize(&request, &env)?;
+        } else {
+            session::authorize(&request, &env)?;
+        }
+    } else if !google_enabled {
+        session::authorize(&request, &env)?;
+    }
     match (method, segments.as_slice()) {
         (Method::Post, ["", "api", "events"]) => api::create_event(&mut request, &env).await,
         (Method::Get, ["", "api", "events", id]) if identifier_valid(id) => {
             api::get_event(id, &env).await
         }
         (Method::Post, ["", "api", "events", id, "responses"]) if identifier_valid(id) => {
+            if google_enabled {
+                let origin = env
+                    .var("APP_ORIGIN")
+                    .map_err(|_| ApiError::new(503, "auth_unavailable"))?
+                    .to_string();
+                if request.headers().get("origin")?.as_deref() != Some(&origin) {
+                    return Err(ApiError::new(403, "origin_forbidden"));
+                }
+            }
             api::submit_response(id, &mut request, &env).await
         }
         (Method::Get, ["", "api", "events", id, "responses"]) if identifier_valid(id) => {

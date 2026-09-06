@@ -20,6 +20,8 @@ futures-util = "0.3"
 chrono = { version = "=0.4.45", default-features = false, features = ["std"] }
 chrono-tz = { version = "=0.10.4", default-features = false, features = ["std"] }
 hmac = "=0.12.1"
+base64 = "0.22"
+rsa = { version = "0.9.10", default-features = false, features = ["sha2"] }
 
 [profile.release]
 lto = true
