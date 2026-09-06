@@ -692,3 +692,9 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 - Rust WorkerでもRSA署名検証を依存クレートだけでWasm対象へコンパイルできた。GoogleのJWKSはログイン時に取得するため、鍵キャッシュとローテーション運用は次のStoryで詰める。
 - Google設定が未投入の既存staging fixtureを壊さないため、`GOOGLE_CLIENT_ID`が空の環境では従来の試用コードを残す段階導入になった。公開環境でGoogle必須にするには両設定の投入が前提になる。
 - `rustfmt --emit stdout`を入口ファイルへ直接書き戻すと、モジュール出力のパス見出しを含めて上書きし得る。今後は一時ディレクトリで検査し、直接書き戻さない。
+
+## 2026-09-06 Google organizer sign-in UI
+
+- Cloudflareの既存Worker認証APIはGET/POST/DELETE `/api/organizer/session`をすでに持っていたため、UI側はIDトークン交換だけでなく、初期セッション確認とログアウトも同じCookie境界へ切り替える必要があった。
+- CloudAppが起動時に主催者セッションを必須にすると共有回答URLまで塞がるため、ブラウザパスで公開回答画面を先に分岐する必要がある。
+- `cargo test --features cloud-web` はネイティブ用統合テストが機能フラグ不足で失敗する。cloud-webの`cargo check`と、既存のnative-fullstackテストを分けて評価する。

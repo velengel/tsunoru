@@ -319,3 +319,26 @@ The user subsequently stopped this loop and set a two-round limit. [ADR 0043](AD
 - R033 [ブラウザクライアント未接続](https://github.com/velengel/tsunoru/pull/15#discussion_r3943704095): **要対応（ただし別Issueへ分離）**。現在のUIは試用コードのみでGoogle ID Tokenを送れず、Google設定を有効にすると作成不能になる。今回のWorker境界は保ち、GISボタン接続は別Issueで実装する前提をPR本文へ明記した。
 - R034 [verified subject未保持](https://github.com/velengel/tsunoru/pull/15#discussion_r3943704096): **要対応**。空subjectを署名するとGoogleアカウント間でセッションが区別できず、認証境界が形だけになるため、subjectを署名Cookieへ含めた。DB所有権との関連付けは別Storyとした。
 - 状態：R032・R034を同一修正バッチで対応・検証済み。R033はブラウザUI接続を別Issueへ切り出し、現PRでは段階導入条件を文書化。修正コミット：[8012189](https://github.com/velengel/tsunoru/commit/8012189daca9d248c31c77db1ff5d3ea8a4aa1a3)。
+
+## R052-R056: Codex review for PR #20 (2026-09-06)
+
+[Review summary](https://github.com/velengel/tsunoru/pull/20#issuecomment-5556138210) completed against `6834b6e`; five findings were returned on the next pushed head `3e3f387`.
+
+- [R052](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796364) **fix**: `document::eval` conflicted with the existing CSP. Replaced dynamic evaluation with a same-origin static `assets/google-signin.js` that loads GIS on its `onload` callback and posts the token directly.
+- [R053](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796367) **fix**: added narrowly scoped `frame-src https://accounts.google.com/gsi/` and GIS stylesheet/connect sources required by the official integration.
+- [R054](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796369) **fix**: initialization now uses the external script `onload` callback instead of a single 500ms retry.
+- [R055](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796371) **fix**: logout now selects the staging endpoint when the legacy fallback session was used, and the organizer endpoint otherwise.
+- [R056](https://github.com/velengel/tsunoru/pull/20#discussion_r3943796373) **fix**: marked the implemented Story tasks complete while retaining browser verification as pending.
+
+All five findings affect a concrete runtime or documentation defect and were fixed together in commit `33e0299` after local verification. A second review is required for the new head within the two-round limit.
+
+## R057-R060: Codex review for PR #20 second round (2026-09-06)
+
+[Second-round review](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827723) completed against `3cf3c2b`; four findings were returned.
+
+- [R057](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827723) **fix**: the watcher now requires the completed summary's reviewed SHA to equal the current PR HEAD.
+- [R058](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827724) **fix**: the watcher now fetches inline review comments from the pull-request comments API before declaring the batch collected.
+- [R059](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827726) **fix**: the legacy trial-code form is rendered only when the staging fallback mode was selected.
+- [R060](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827727) **fix**: the browser bridge obtains the configured public Client ID from `/api/organizer/config`, keeping it aligned with Worker configuration.
+
+All findings were necessary for correct review convergence or runtime behavior and were fixed together in commit `366adbd`. This reaches the two-round autonomous review limit; no further review is requested.

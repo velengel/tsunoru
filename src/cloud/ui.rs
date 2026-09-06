@@ -18,6 +18,7 @@ use dioxus::prelude::*;
 use std::collections::BTreeMap;
 
 const CLOUD_CSS: Asset = asset!("/assets/cloud.css");
+const GOOGLE_SIGNIN_JS: Asset = asset!("/assets/google-signin.js");
 
 #[derive(Clone, PartialEq)]
 enum Access {
@@ -25,6 +26,23 @@ enum Access {
     Required,
     Ready,
     Failed,
+}
+
+fn is_public_event_path(path: &str) -> bool {
+    let mut parts = path.trim_start_matches('/').split('/');
+    matches!((parts.next(), parts.next(), parts.next()), (Some("events"), Some(id), None) if !id.is_empty())
+}
+
+#[cfg(test)]
+mod access_tests {
+    use super::is_public_event_path;
+
+    #[test]
+    fn shared_event_path_is_public_but_summary_and_create_are_not() {
+        assert!(is_public_event_path("/events/abc"));
+        assert!(!is_public_event_path("/events/abc/summary"));
+        assert!(!is_public_event_path("/"));
+    }
 }
 
 #[derive(Clone, PartialEq, Routable)]
@@ -42,12 +60,29 @@ enum CloudRoute {
 #[component]
 pub fn CloudApp() -> Element {
     let mut access = use_context_provider(|| Signal::new(Access::Checking));
+    let mut legacy_auth = use_context_provider(|| Signal::new(false));
     use_effect(move || {
         spawn(async move {
-            access.set(match api::session().await {
-                Ok(()) => Access::Ready,
-                Err(error) if error.needs_access() => Access::Required,
-                Err(_) => Access::Failed,
+            let public_path = browser::path().is_some_and(|path| is_public_event_path(&path));
+            access.set(if public_path {
+                Access::Ready
+            } else {
+                match api::organizer_session_status().await {
+                    Ok(()) => Access::Ready,
+                    Err(error) if error.needs_access() => Access::Required,
+                    Err(error) if error.status == 503 => {
+                        legacy_auth.set(true);
+                        match api::session().await {
+                            Ok(()) => {
+                                legacy_auth.set(true);
+                                Access::Ready
+                            }
+                            Err(fallback) if fallback.needs_access() => Access::Required,
+                            Err(_) => Access::Failed,
+                        }
+                    }
+                    Err(_) => Access::Failed,
+                }
             });
         });
     });
@@ -75,20 +110,37 @@ pub fn CloudApp() -> Element {
 #[component]
 fn AccessEntry() -> Element {
     let mut access = use_context::<Signal<Access>>();
+    let mut legacy_auth = use_context::<Signal<bool>>();
     let mut busy = use_signal(|| false);
     let mut message = use_signal(String::new);
     rsx! {
-        TrialCodeForm { busy: busy(), message: message(), on_submit: move |code: String| {
+        GoogleSignInButton {}
+        if !message.is_empty() { p { role: "alert", class: "form-error", "{message}" } }
+        p { class: "field-help", "回答者はログインせずに共有URLから回答できます。" }
+        if legacy_auth() { TrialCodeForm { busy: busy(), message: message(), on_submit: move |code: String| {
             if busy() { return; }
             busy.set(true); message.set(String::new());
             spawn(async move {
                 match api::login(code).await {
-                    Ok(()) => access.set(Access::Ready),
+                    Ok(()) => { legacy_auth.set(true); access.set(Access::Ready) },
                     Err(error) => message.set(if error.status == 401 { "試用コードを確認してください。".to_owned() } else { error.message().to_owned() }),
                 }
                 busy.set(false);
             });
         } }
+        }
+    }
+}
+
+#[component]
+fn GoogleSignInButton() -> Element {
+    let nonce = match browser::random_key() {
+        Ok(value) => value,
+        Err(_) => String::new(),
+    };
+    rsx! {
+        document::Script { src: Some(GOOGLE_SIGNIN_JS.to_string()), defer: Some(true) }
+        div { id: "google-signin-button", class: "google-signin-button", role: "group", aria_label: "Googleでログイン", "data-nonce": nonce }
     }
 }
 
@@ -117,6 +169,7 @@ pub fn TrialCodeForm(busy: bool, message: String, on_submit: EventHandler<String
 #[component]
 fn CloudHeader() -> Element {
     let mut access = use_context::<Signal<Access>>();
+    let legacy_auth = use_context::<Signal<bool>>();
     let mut busy = use_signal(|| false);
     let mut message = use_signal(String::new);
     rsx! {
@@ -125,7 +178,7 @@ fn CloudHeader() -> Element {
             button { class: "text-link", r#type: "button", disabled: busy(), onclick: move |_| async move {
                 if busy() { return; }
                 busy.set(true);
-                match api::logout().await {
+                match if legacy_auth() { api::logout().await } else { api::organizer_logout().await } {
                     Ok(()) => access.set(Access::Required),
                     Err(error) if error.needs_access() => access.set(Access::Required),
                     Err(error) => message.set(error.message().to_owned()),

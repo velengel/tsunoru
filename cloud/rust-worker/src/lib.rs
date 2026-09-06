@@ -132,6 +132,10 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
     if path == "/api/organizer/session" {
         return organizer_auth::route(&mut request, &env).await;
     }
+    if path == "/api/organizer/config" && method == Method::Get {
+        let client_id = env.var("GOOGLE_CLIENT_ID")?.to_string();
+        return json_response(200, &json!({"client_id": client_id}));
+    }
     let segments: Vec<_> = path.split('/').collect();
     let google_enabled = env
         .var("GOOGLE_CLIENT_ID")
@@ -198,7 +202,7 @@ pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response
         .headers_mut()
         .set("Referrer-Policy", "no-referrer")?;
     response.headers_mut().set("X-Frame-Options", "DENY")?;
-    response.headers_mut().set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")?;
+    response.headers_mut().set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client 'wasm-unsafe-eval'; frame-src https://accounts.google.com/gsi/; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' data:; connect-src 'self' https://accounts.google.com/gsi/; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")?;
     if response.status_code() == 401 {
         response.headers_mut().set("WWW-Authenticate", "Bearer")?;
     }

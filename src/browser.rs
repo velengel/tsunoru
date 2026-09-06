@@ -52,6 +52,15 @@ pub fn absolute_url(path: &str) -> String {
     path.to_owned()
 }
 
+pub fn path() -> Option<String> {
+    #[cfg(all(feature = "web", target_arch = "wasm32"))]
+    {
+        return web_sys::window()?.location().pathname().ok();
+    }
+    #[cfg(not(all(feature = "web", target_arch = "wasm32")))]
+    None
+}
+
 pub fn focus(id: &str) {
     #[cfg(all(feature = "web", target_arch = "wasm32"))]
     {
