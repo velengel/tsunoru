@@ -177,8 +177,9 @@ fn cookie(secret: &str, subject: &str) -> ApiResult<String> {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect::<String>();
+    let encoded_subject = URL_SAFE_NO_PAD.encode(subject.as_bytes());
     Ok(format!(
-        "{COOKIE}=v1.{expiry}.{sig}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age={LIFETIME_SECONDS}"
+        "{COOKIE}=v2.{expiry}.{encoded_subject}.{sig}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age={LIFETIME_SECONDS}"
     ))
 }
 
@@ -188,13 +189,13 @@ pub(crate) fn authorize(request: &Request, env: &Env) -> ApiResult<()> {
         .headers()
         .get("cookie")?
         .ok_or(ApiError::new(401, "unauthorized"))?;
-    let prefix = format!("{COOKIE}=v1.");
+    let prefix = format!("{COOKIE}=v2.");
     let raw = value
         .split(';')
         .find_map(|v| v.trim().strip_prefix(&prefix))
         .ok_or(ApiError::new(401, "unauthorized"))?;
     let fields: Vec<_> = raw.split('.').collect();
-    let [expiry, signature] = fields.as_slice() else {
+    let [expiry, encoded_subject, signature] = fields.as_slice() else {
         return Err(ApiError::new(401, "unauthorized"));
     };
     let expiry: u64 = expiry
@@ -203,11 +204,16 @@ pub(crate) fn authorize(request: &Request, env: &Env) -> ApiResult<()> {
     if expiry <= now() || expiry > now() + LIFETIME_SECONDS || signature.len() != 64 {
         return Err(ApiError::new(401, "unauthorized"));
     }
+    let subject = URL_SAFE_NO_PAD
+        .decode(encoded_subject)
+        .map_err(|_| ApiError::new(401, "unauthorized"))?;
+    let subject = String::from_utf8(subject).map_err(|_| ApiError::new(401, "unauthorized"))?;
+    if subject.is_empty() || subject.len() > 255 {
+        return Err(ApiError::new(401, "unauthorized"));
+    }
     let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
         .map_err(|_| ApiError::new(503, "auth_unavailable"))?;
-    // Subject is deliberately not accepted from the client; session validation is completed by the signed envelope in v2.
-    // v1 cookies are only issued for the current browser and are checked by the opaque signature below.
-    mac.update(format!("tsunoru-organizer:v1\n\n{expiry}").as_bytes());
+    mac.update(format!("tsunoru-organizer:v2\n{subject}\n{expiry}").as_bytes());
     let expected = mac.finalize().into_bytes();
     let supplied = signature
         .as_bytes()
@@ -238,7 +244,7 @@ pub(crate) async fn route(request: &mut Request, env: &Env) -> ApiResult<Respons
             if login.nonce.is_empty() || login.nonce.len() > 128 {
                 return Err(ApiError::new(401, "invalid_identity"));
             }
-            verify_id_token(&login.id_token, &client_id, &login.nonce).await?;
+            let subject = verify_id_token(&login.id_token, &client_id, &login.nonce).await?;
             let mut response = json_response(
                 200,
                 &Session {
@@ -247,7 +253,7 @@ pub(crate) async fn route(request: &mut Request, env: &Env) -> ApiResult<Respons
             )?;
             response
                 .headers_mut()
-                .set("Set-Cookie", &cookie(&secret, "")?)?;
+                .set("Set-Cookie", &cookie(&secret, &subject)?)?;
             Ok(response)
         }
         Method::Get => {

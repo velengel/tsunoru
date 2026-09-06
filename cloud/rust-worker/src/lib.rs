@@ -139,7 +139,9 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         .unwrap_or(false);
     let organizer_mutation = matches!(
         (&method, segments.as_slice()),
-        (Method::Post, ["", "api", "events"]) | (Method::Delete, ["", "api", "events", _])
+        (Method::Post, ["", "api", "events"])
+            | (Method::Get, ["", "api", "events", _, "responses"])
+            | (Method::Delete, ["", "api", "events", _])
     );
     if organizer_mutation {
         if google_enabled {
