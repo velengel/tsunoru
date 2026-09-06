@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cp, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
 const directory = dirname(fileURLToPath(import.meta.url));
@@ -29,21 +30,49 @@ const onTerm = () => interrupt("SIGTERM");
 process.once("SIGINT", onInt);
 process.once("SIGTERM", onTerm);
 
+function signalGroup(pid, signal) {
+  try { process.kill(-pid, signal); return true; }
+  catch (error) { if (error.code === "ESRCH") return false; throw error; }
+}
+
+async function stopGroup(pid) {
+  if (!pid) return;
+  // The command may have exited while its detached group's helpers remain.
+  for (const signal of ["SIGTERM", "SIGKILL"]) {
+    if (!signalGroup(pid, signal)) return;
+    const deadline = Date.now() + 1500;
+    while (Date.now() < deadline) {
+      if (!signalGroup(pid, 0)) return;
+      await delay(20);
+    }
+  }
+  throw new Error(`owned compiler process group ${pid} did not exit`);
+}
+
 async function run(command, args, cwd, capture = false) {
   checkInterrupted();
-  return new Promise((resolve, reject) => {
-    child = spawn(command, args, {
-      cwd, detached: true, stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
-    });
-    let output = "";
-    if (capture) child.stdout.setEncoding("utf8").on("data", (chunk) => { output += chunk; });
-    child.once("error", reject);
-    child.once("close", (code, signal) => {
-      child = undefined;
-      if (code === 0 && !interrupted) resolve(output);
-      else reject(new Error(`${command} failed (${signal || code})`));
-    });
+  child = spawn(command, args, {
+    cwd, detached: true, stdio: capture ? ["ignore", "pipe", "inherit"] : "inherit",
   });
+  const processGroup = child.pid;
+  let output = "";
+  if (capture) child.stdout.setEncoding("utf8").on("data", (chunk) => { output += chunk; });
+  const closed = new Promise((resolve) => child.once("close", resolve));
+  try {
+    const { code, signal } = await new Promise((resolve, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code, signal) => resolve({ code, signal }));
+    });
+    if (code !== 0 || interrupted) throw new Error(`${command} failed (${signal || code})`);
+    await closed;
+    checkInterrupted();
+    return output;
+  } catch (error) {
+    // Reap helpers before waiting for inherited pipes to close or deleting output.
+    await stopGroup(processGroup);
+    await closed;
+    throw error;
+  } finally { child = undefined; }
 }
 
 try {

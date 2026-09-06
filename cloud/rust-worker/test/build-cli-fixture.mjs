@@ -9,7 +9,11 @@ if (!root || await readFile(join(root, "fixture.marker"), "utf8") !== "tsunoru-b
   throw new Error("isolated fixture root required");
 }
 if (process.argv.includes("--child")) {
+  // A failed compiler can leave a helper that does not honor graceful shutdown.
+  if (process.env.TSUNORU_BUILD_TEST_MODE === "fail") process.on("SIGTERM", () => {});
   setInterval(() => {}, 1000);
+  process.send({ ready: true });
+  process.disconnect();
 } else if (basename(process.argv[1]) === "cargo") {
   console.log(JSON.stringify({ target_directory: join(root, "target") }));
 } else if (basename(process.argv[1]) === "dx") {
@@ -24,9 +28,12 @@ if (process.argv.includes("--child")) {
   await mkdir(output, { recursive: true });
   await writeFile(join(output, "index.js"), "// synthetic new worker\n");
   console.log("BUILD_TEST_WORKER_STARTED");
-  if (process.env.TSUNORU_BUILD_TEST_MODE === "hold") {
-    const child = spawn(process.execPath, [process.argv[1], "--child"], { stdio: "ignore" });
-    console.log(`BUILD_TEST_READY ${process.pid} ${child.pid}`);
-    setInterval(() => {}, 1000);
-  } else if (process.env.TSUNORU_BUILD_TEST_MODE === "fail") process.exitCode = 23;
+  if (["hold", "fail"].includes(process.env.TSUNORU_BUILD_TEST_MODE)) {
+    const child = spawn(process.execPath, [process.argv[1], "--child"], { stdio: ["ignore", "ignore", "ignore", "ipc"] });
+    child.once("message", () => {
+      console.log(`BUILD_TEST_READY ${process.pid} ${child.pid}`);
+      if (process.env.TSUNORU_BUILD_TEST_MODE === "fail") process.exit(23);
+      setInterval(() => {}, 1000);
+    });
+  }
 } else throw new Error("unexpected fixture command");

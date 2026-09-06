@@ -10,6 +10,8 @@ release build でも CLI の debug symbols が既定で有効になり、wasm-op
 
 UI の生成が済んでいても、続く Worker build の失敗で公開用ディレクトリに新旧の出力が混ざった。両方を一時 bundle にまとめて成功後に切り替え、失敗やシグナル中断でも直前の完成物を保つようにした。再現試験では失敗コードだけでなく、狙った途中工程へ到達した証拠も確認する。
 
+コマンド本体の終了は補助プロセスの終了を保証しない。合成コンパイラーが失敗後に子を残すケースを追加し、所有 group の回収までを終了処理に含めた。
+
 ## Batching needs a stopping condition
 
 Grouping related fixes did not prevent repeated review passes from expanding this PR. The user's correction sets a two-round limit and makes scope, demonstrated impact and remaining risk part of the merge decision. Review convergence is no longer an unbounded completion requirement; ADR 0043 is authoritative.
