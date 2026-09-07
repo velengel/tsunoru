@@ -2,7 +2,7 @@
 
 The Dioxus CSR app and Rust Worker share one origin. A tester enters the shared trial code, creates an event, shares its URL, submits availability, and opens the organizer matrix in the browser that created the event. Native Fullstack remains the default root build; `cloud-web` selects this smaller journey.
 
-Use a **new** dedicated D1 database. `schema.sql` is a fresh baseline, not a migration for the native app or earlier experiments. Existing tables intentionally fail schema application. Accounts, response editing, comments, final decisions, browser-to-browser recovery, and existing-data migration are outside this pilot ([#12](https://github.com/velengel/tsunoru/issues/12)).
+Use a **new** dedicated D1 database. `schema.sql` is a fresh baseline, not a migration for the native app or earlier experiments. Existing tables intentionally fail schema application. Accounts, comments, final decisions, browser-to-browser recovery, and existing-data migration are outside this pilot ([#12](https://github.com/velengel/tsunoru/issues/12)). Response editing is supported for an existing capability while the event remains undecided.
 
 ## Build and verify
 
@@ -45,7 +45,7 @@ JSON bodies are limited to 64 KiB while streaming. IDs use 1–64 ASCII letters,
 | --- | --- | --- |
 | `POST /api/events` | `organizer_capability` in JSON | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}],organizer_capability}`; first create 201 `{id,name}`, identical authorized retry 200, changed/wrong-owner retry 409 |
 | `GET /api/events/:id` | none | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}]}`; no capabilities or private answers |
-| `POST /api/events/:id/responses` | `x-response-capability` | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, identical retry 200, changed retry 409 |
+| `POST /api/events/:id/responses` | `x-response-capability` | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, same capability retry/update 200 |
 | `GET /api/events/:id/responses` | `x-organizer-capability` | `{responses:[{response_id,respondent_name,availabilities:[{candidate_id,availability}]}]}`; wrong capability 403 |
 | `DELETE /api/events/:id` | `x-organizer-capability` | Deletes the event, candidates, responses and answers atomically; success 200 `{deleted:true}`, wrong capability 403 |
 
