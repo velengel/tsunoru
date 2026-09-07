@@ -295,6 +295,12 @@ The first review batch against `4fcbf6c` returned two findings: candidate-set va
 
 The second review batch against `4084ef9` found three issues: successful edits did not exit edit mode, README and glossary contradicted the update contract, and the Story claimed a decided-event boundary absent from the pilot schema. All were necessary. The UI now restores the accepted view, documentation states changed-payload updates return 200, and the decided-event test boundary is explicitly deferred. Fixed in `3e98179`; no third review is requested under ADR 0043.
 
+## R070: Codex review for PR #24 first round (2026-09-07)
+
+The staging handoff review found that bootstrap instructions could be repeated after deployment. The finding was necessary because repeating fresh D1/schema/secret steps risks creating a new database or rotating credentials. The README now labels bootstrap as historical and documents redeployment against existing resources; the thread was replied to and resolved.
+
+The second-round follow-up found two consistency gaps: Story 0031 did not reflect the verified real-URL journey, and routine secret handling depended on an undocumented ignored file. Story 0031 now matches report 0028, and README documents remote secret retention plus explicit interactive rotation. No third review is requested under ADR 0043.
+
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
 - 指摘：自動レビューによる検証コマンド拒否（専用D1への合成データ書き込み後、失敗・割り込み時の削除保証が不足）。
