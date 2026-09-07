@@ -301,6 +301,8 @@ The staging handoff review found that bootstrap instructions could be repeated a
 
 The second-round follow-up found two consistency gaps: Story 0031 did not reflect the verified real-URL journey, and routine secret handling depended on an undocumented ignored file. Story 0031 now matches report 0028, and README documents remote secret retention plus explicit interactive rotation. No third review is requested under ADR 0043.
 
+Second-round follow-up found two necessary consistency gaps: Story 0031 still left the verified real-URL journey unchecked, and routine secret handling depended on an undocumented ignored file. Story 0031 is now aligned with report 0028, and README documents remote secret retention plus explicit interactive rotation in `f2d6d64`. No third review is requested under ADR 0043.
+
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
 - 指摘：自動レビューによる検証コマンド拒否（専用D1への合成データ書き込み後、失敗・割り込み時の削除保証が不足）。
