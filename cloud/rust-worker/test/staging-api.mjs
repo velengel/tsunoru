@@ -62,6 +62,32 @@ export async function verifyStagingApi(pool) {
   await closed.close();
   console.log("PASS authentication and Origin reject before database access");
 
+  const limited = await pool.create();
+  const limitedSource = { "cf-connecting-ip": "198.51.100.24" };
+  for (let index = 0; index < 60; index += 1) {
+    const result = await request(limited, "/api/events", {
+      method: "POST", headers: limitedSource, payload: event(`limited-${index}`), status: 201,
+    });
+    assert.equal(result.headers.get("retry-after"), null);
+  }
+  const rejected = await request(limited, "/api/events", {
+    method: "POST", headers: limitedSource, payload: event("limited-rejected"), status: 429,
+  });
+  assert.equal(rejected.json.error.code, "rate_limited");
+  assert.match(rejected.headers.get("retry-after") || "", /^([1-5]?[0-9]|60)$/);
+  const storedSource = await limited.db.prepare("SELECT source_hash FROM rate_limits WHERE route='create' LIMIT 1").first();
+  assert.notEqual(storedSource.source_hash, "198.51.100.24");
+  await limited.db.prepare("UPDATE rate_limits SET window_start = window_start - 60 WHERE route='create'").run();
+  await request(limited, "/api/events", {
+    method: "POST", headers: limitedSource, payload: event("limited-reset"), status: 201,
+  });
+  const concurrent = await Promise.all(["limited-concurrent-a", "limited-concurrent-b"].map((id) => request(limited, "/api/events", {
+    method: "POST", headers: limitedSource, payload: event(id), status: 201,
+  })));
+  assert.deepEqual(concurrent.map((result) => result.status), [201, 201]);
+  await limited.close();
+  console.log("PASS hashed source rate limits reject excess requests, expose Retry-After and reset by window");
+
   const invalidConfigurations = [
     { omit: ["STAGING_API_TOKEN"] },
     { bindings: { STAGING_API_TOKEN: "" } },

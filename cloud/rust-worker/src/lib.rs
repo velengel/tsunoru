@@ -14,17 +14,32 @@ const MAX_BODY_BYTES: usize = 64 * 1024;
 struct ApiError {
     status: u16,
     code: &'static str,
+    retry_after: Option<u64>,
 }
 
 type ApiResult<T> = std::result::Result<T, ApiError>;
 
 impl ApiError {
     fn new(status: u16, code: &'static str) -> Self {
-        Self { status, code }
+        Self {
+            status,
+            code,
+            retry_after: None,
+        }
     }
 
     fn invalid() -> Self {
         Self::new(400, "invalid_request")
+    }
+}
+
+impl ApiError {
+    fn rate_limited(retry_after: u64) -> Self {
+        Self {
+            status: 429,
+            code: "rate_limited",
+            retry_after: Some(retry_after),
+        }
     }
 }
 
@@ -112,6 +127,53 @@ async fn body<T: DeserializeOwned>(request: &mut Request) -> ApiResult<T> {
     serde_json::from_slice(&bytes).map_err(|_| ApiError::invalid())
 }
 
+const RATE_WINDOW_SECONDS: u64 = 60;
+
+fn rate_limit_for(operation: &str) -> u64 {
+    match operation {
+        "create" => 60,
+        "response" => 120,
+        "read" => 240,
+        _ => 60,
+    }
+}
+
+async fn enforce_rate_limit(request: &Request, env: &Env, operation: &str) -> ApiResult<()> {
+    let source = request
+        .headers()
+        .get("cf-connecting-ip")?
+        .unwrap_or_else(|| "unknown".to_owned());
+    let source_hash = hash(&format!("tsunoru-rate-limit:v1\n{source}"));
+    let now = Date::now().as_millis() / 1_000;
+    let window_start = now - (now % RATE_WINDOW_SECONDS);
+    let limit = rate_limit_for(operation);
+    let db = env.d1("DB")?;
+    #[derive(serde::Deserialize)]
+    struct RateLimitRow {
+        request_count: u64,
+    }
+    let result = db
+        .batch(vec![
+            db.prepare("INSERT INTO rate_limits(source_hash,route,window_start,request_count) VALUES(?1,?2,?3,1) ON CONFLICT(source_hash,route,window_start) DO UPDATE SET request_count=request_count+1")
+                .bind(&[source_hash.clone().into(), operation.to_owned().into(), window_start.to_string().into()])?,
+            db.prepare("SELECT request_count FROM rate_limits WHERE source_hash=?1 AND route=?2 AND window_start=?3")
+                .bind(&[source_hash.into(), operation.to_owned().into(), window_start.to_string().into()])?,
+        ])
+        .await?;
+    let count = result[1]
+        .results::<RateLimitRow>()?
+        .into_iter()
+        .next()
+        .map(|row| row.request_count)
+        .unwrap_or(limit + 1);
+    if count > limit {
+        return Err(ApiError::rate_limited(
+            RATE_WINDOW_SECONDS - (now % RATE_WINDOW_SECONDS),
+        ));
+    }
+    Ok(())
+}
+
 async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
     let path = request.path();
     let method = request.method();
@@ -156,6 +218,16 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
     } else if !google_enabled {
         session::authorize(&request, &env)?;
     }
+    let operation = match (&method, segments.as_slice()) {
+        (Method::Post, ["", "api", "events"]) => Some("create"),
+        (Method::Post, ["", "api", "events", _, "responses"]) => Some("response"),
+        (Method::Get, ["", "api", "events", _])
+        | (Method::Get, ["", "api", "events", _, "responses"]) => Some("read"),
+        _ => None,
+    };
+    if let Some(operation) = operation {
+        enforce_rate_limit(&request, &env, operation).await?;
+    }
     match (method, segments.as_slice()) {
         (Method::Post, ["", "api", "events"]) => api::create_event(&mut request, &env).await,
         (Method::Get, ["", "api", "events", id]) if identifier_valid(id) => {
@@ -189,7 +261,14 @@ pub async fn fetch(request: Request, env: Env, _ctx: Context) -> Result<Response
     let mut response = match route(request, env).await {
         Ok(response) => response,
         Err(error) => {
-            Response::from_json(&json!({"error": {"code": error.code}}))?.with_status(error.status)
+            let mut response = Response::from_json(&json!({"error": {"code": error.code}}))?
+                .with_status(error.status);
+            if let Some(retry_after) = error.retry_after {
+                response
+                    .headers_mut()
+                    .set("Retry-After", &retry_after.to_string())?;
+            }
+            response
         }
     };
     if private_response || response.status_code() >= 400 {
