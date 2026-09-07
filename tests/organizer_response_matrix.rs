@@ -47,7 +47,9 @@ fn populated_matrix() -> OrganizerResponseMatrix {
 }
 
 fn render_matrix(matrix: OrganizerResponseMatrix) -> String {
-    dioxus_ssr::render_element(rsx! { OrganizerResponseMatrixView { matrix } })
+    dioxus_ssr::render_element(
+        rsx! { OrganizerResponseMatrixView { matrix, show_suggestions: false } },
+    )
 }
 
 #[test]

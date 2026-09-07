@@ -342,3 +342,17 @@ All five findings affect a concrete runtime or documentation defect and were fix
 - [R060](https://github.com/velengel/tsunoru/pull/20#discussion_r3943827727) **fix**: the browser bridge obtains the configured public Client ID from `/api/organizer/config`, keeping it aligned with Worker configuration.
 
 All findings were necessary for correct review convergence or runtime behavior and were fixed together in commit `366adbd`. This reaches the two-round autonomous review limit; no further review is requested.
+
+## R061-R064: Codex review for PR #21 (2026-09-07)
+
+The first review batch for `ff3f378` returned four findings: [timezone context](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307495), [organizer-only suggestions](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307500), [modal focus](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307506), and [score precomputation](https://github.com/velengel/tsunoru/pull/21#discussion_r3944307510). All were necessary because they caused ambiguity, participant leakage, keyboard inaccessibility, or avoidable O(C²R) work. They were fixed together in commit `6ce1265` and will receive one grouped follow-up review within the two-round limit.
+
+## R065-R067: Codex review for PR #21 second round (2026-09-07)
+
+The follow-up review against `b8e560a` returned three findings: [candidate-suggestion terminology](https://github.com/velengel/tsunoru/pull/21#discussion_r3944371812), [help-dialog focus containment](https://github.com/velengel/tsunoru/pull/21#discussion_r3944371813), and [shared suggestion CSS placement](https://github.com/velengel/tsunoru/pull/21#discussion_r3944371814). All were necessary: the glossary omitted newly shared vocabulary, keyboard focus could escape the modal, and Cloudflare-only CSS could lose to the shared stylesheet on native rendering.
+
+- R065 **fix**: added the candidate score and recommendation glossary entry with organizer-only scope and ADR/Story references.
+- R066 **fix**: added start/end focus guards, Escape and backdrop/close focus restoration to the help dialog.
+- R067 **fix**: moved response-matrix suggestion styles to `assets/main.css`, retaining Cloudflare modal styles in `assets/cloud.css`.
+
+The fixes are prepared for commit and verification. This is the second and final autonomous review round under [ADR 0043](ADR/0043-stop-review-follow-up-after-two-rounds.md); no third review is requested.

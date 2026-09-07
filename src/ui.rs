@@ -2397,7 +2397,7 @@ fn OrganizerSummaryClient(public_id: String) -> Element {
                                 {
                                     OrganizerResponseMatrixLoading {}
                                 } else if let Some(loaded) = matrix() {
-                                    OrganizerResponseMatrixView { matrix: loaded }
+                                    OrganizerResponseMatrixView { matrix: loaded, show_suggestions: true }
                                 } else if let Some(message) = matrix_error() {
                                     OrganizerResponseMatrixFailure {
                                         message,
@@ -2978,7 +2978,7 @@ pub fn ParticipantResponseMatrixView(matrix: ParticipantResponseMatrix) -> Eleme
             p { class: "participant-response-matrix-note",
                 "送った時点の一覧です。あとから届いた回答は自動では増えません。"
             }
-            OrganizerResponseMatrixView { matrix }
+            OrganizerResponseMatrixView { matrix, show_suggestions: false }
         }
     }
 }

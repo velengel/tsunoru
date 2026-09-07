@@ -1214,6 +1214,8 @@ button:disabled {
   font-size: 0.82rem;
   text-align: center;
 }
+.response-matrix-suggested { background: #dcebdc; }
+.response-matrix-suggestion { display: block; margin-top: .25rem; color: #245c3a; font-size: .8rem; }
 
 .response-matrix-respondent-heading {
   position: sticky;

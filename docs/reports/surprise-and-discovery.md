@@ -698,3 +698,8 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 - Cloudflareの既存Worker認証APIはGET/POST/DELETE `/api/organizer/session`をすでに持っていたため、UI側はIDトークン交換だけでなく、初期セッション確認とログアウトも同じCookie境界へ切り替える必要があった。
 - CloudAppが起動時に主催者セッションを必須にすると共有回答URLまで塞がるため、ブラウザパスで公開回答画面を先に分岐する必要がある。
 - `cargo test --features cloud-web` はネイティブ用統合テストが機能フラグ不足で失敗する。cloud-webの`cargo check`と、既存のnative-fullstackテストを分けて評価する。
+
+## 2026-09-07 PR #21 review follow-up
+
+- ヘルプモーダルは閉じるボタンだけを初期フォーカスしても、Tab操作で背後のページへフォーカスが抜ける。前後のフォーカスガードを同じダイアログ内に置くことで、追加のJavaScript評価なしにキーボードの循環を保てることが分かった。
+- 候補表示のCSSはCloudflare固有のスタイルシートに置くとnative Fullstackでは読み込まれず、さらに共有表の既存セレクターに負ける。表示コンポーネントと同じ共有CSSへ置く必要がある。

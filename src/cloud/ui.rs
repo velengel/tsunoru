@@ -172,9 +172,16 @@ fn CloudHeader() -> Element {
     let legacy_auth = use_context::<Signal<bool>>();
     let mut busy = use_signal(|| false);
     let mut message = use_signal(String::new);
+    let mut help_open = use_signal(|| false);
+    use_effect(move || {
+        if help_open() {
+            browser::focus("help-close");
+        }
+    });
     rsx! {
         header { class: "cloud-header",
             a { class: "wordmark", href: "/", "TSUNORU" }
+            button { id: "help-button", class: "help-button", r#type: "button", aria_label: "使い方を開く", onclick: move |_| help_open.set(true), "?" }
             button { class: "text-link", r#type: "button", disabled: busy(), onclick: move |_| async move {
                 if busy() { return; }
                 busy.set(true);
@@ -187,6 +194,23 @@ fn CloudHeader() -> Element {
             }, "利用を終了" }
         }
         if !message().is_empty() { p { role: "alert", class: "form-error", "{message}" } }
+        if help_open() {
+            div { class: "help-backdrop", role: "presentation", onclick: move |_| { help_open.set(false); browser::focus("help-button"); },
+                section { class: "help-dialog", role: "dialog", aria_modal: "true", aria_labelledby: "help-heading", onkeydown: move |event| { if event.key().to_string() == "Escape" { help_open.set(false); browser::focus("help-button"); } }, onclick: move |event| event.stop_propagation(),
+                    div { id: "help-focus-start", class: "help-focus-guard", tabindex: "0", aria_label: "使い方の先頭", onfocus: move |_| browser::focus("help-close") }
+                    button { id: "help-close", class: "help-close", r#type: "button", aria_label: "使い方を閉じる", onclick: move |_| { help_open.set(false); browser::focus("help-button"); }, "閉じる" }
+                    h2 { id: "help-heading", "TSUNORUの使い方" }
+                    ol {
+                        li { strong { "作成" } "：候補日時を入力してイベントを作ります。" }
+                        li { strong { "共有" } "：表示されたURLを参加者へ送ります。" }
+                        li { strong { "回答" } "：参加者はログインせず、○・△・×を選んで送信します。" }
+                        li { strong { "集計" } "：主催者は「みんなの回答」で候補を比較し、おすすめ表示を参考に決定します。" }
+                    }
+                    p { class: "field-help", "Escキーまたは閉じるボタンでこの説明を閉じられます。" }
+                    div { id: "help-focus-end", class: "help-focus-guard", tabindex: "0", aria_label: "使い方の末尾", onfocus: move |_| browser::focus("help-close") }
+                }
+            }
+        }
     }
 }
 
@@ -683,7 +707,7 @@ fn OrganizerPage(id: String) -> Element {
                 Some(Ok(Some((event,matrix)))) => rsx! {
                     h2 { "{event.name}" }
                     p { "{matrix.responses.len()}人が回答しました。" }
-                    OrganizerResponseMatrixView { matrix }
+                    OrganizerResponseMatrixView { matrix, show_suggestions: true }
                     ShareLink { path:format!("/events/{}",event.id) }
                 },
                 Some(Err(error)) => rsx! { StatusMessage { message:error.message().to_owned() } },

@@ -1,7 +1,7 @@
 //! Calendar, candidate editor, and response table shared by both deployments.
 use crate::domain::{
-    CandidateInput, EVENT_CANDIDATE_MAX_COUNT, EventCreationDraft, EventCreationErrors,
-    OrganizerResponseMatrix,
+    Availability, CandidateInput, EVENT_CANDIDATE_MAX_COUNT, EventCreationDraft,
+    EventCreationErrors, OrganizerResponseMatrix,
 };
 use dioxus::prelude::*;
 use std::{cell::RefCell, rc::Rc};
@@ -456,8 +456,22 @@ pub(crate) fn CandidateDateTimePicker(
 }
 
 /// A static two-dimensional table shared after its caller has authorized a read.
+pub fn candidate_suggestion_score(availabilities: &[Availability]) -> u32 {
+    availabilities
+        .iter()
+        .map(|availability| match availability {
+            Availability::Available => 2,
+            Availability::Maybe => 1,
+            Availability::Unavailable => 0,
+        })
+        .sum()
+}
+
 #[component]
-pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
+pub fn OrganizerResponseMatrixView(
+    matrix: OrganizerResponseMatrix,
+    show_suggestions: bool,
+) -> Element {
     if matrix.responses.is_empty() {
         return rsx! {
             section {
@@ -470,6 +484,21 @@ pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
         };
     }
 
+    let scores = matrix
+        .candidates
+        .iter()
+        .enumerate()
+        .map(|(index, _)| {
+            candidate_suggestion_score(
+                &matrix
+                    .responses
+                    .iter()
+                    .map(|row| row.availabilities[index])
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Vec<_>>();
+    let maximum_score = scores.iter().copied().max().unwrap_or(0);
     rsx! {
         div { class: "response-matrix-view",
             p { id: "response-matrix-scroll-help", class: "response-matrix-scroll-help",
@@ -497,18 +526,20 @@ pub fn OrganizerResponseMatrixView(matrix: OrganizerResponseMatrix) -> Element {
                                 scope: "col",
                                 "回答者"
                             }
-                            for candidate in matrix.candidates.iter() {
+                            for (candidate_index, candidate) in matrix.candidates.iter().enumerate() {
                                 {
                                     let candidate_text = format_local_start(
                                         &candidate.local_date,
                                         &candidate.local_time,
                                     );
+                                    let score = scores[candidate_index];
                                     rsx! {
-                                        th { scope: "col",
+                                        th { scope: "col", class: if show_suggestions && score == maximum_score && maximum_score > 0 { "response-matrix-suggested" } else { "" },
                                             time {
                                                 datetime: "{candidate.local_date}T{candidate.local_time}",
                                                 "{candidate_text}"
                                             }
+                                            if show_suggestions && score == maximum_score && maximum_score > 0 { span { class: "response-matrix-suggestion", "おすすめ" } }
                                         }
                                     }
                                 }
@@ -556,4 +587,18 @@ pub(crate) fn format_local_start(local_date: &str, local_time: &str) -> String {
 
 fn format_candidate_input(candidate: &CandidateInput) -> String {
     format_local_start(&candidate.local_date, &candidate.local_time)
+}
+
+#[cfg(test)]
+mod suggestion_tests {
+    use super::candidate_suggestion_score;
+    use crate::domain::Availability;
+
+    #[test]
+    fn available_is_worth_two_and_maybe_one() {
+        assert_eq!(
+            candidate_suggestion_score(&[Availability::Available, Availability::Maybe]),
+            3
+        );
+    }
 }
