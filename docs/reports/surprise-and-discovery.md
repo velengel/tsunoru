@@ -715,4 +715,9 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 ## 2026-09-07 PR #22 review
 
 - 候補集合検証を最初のINSERTだけに置くと、同じcapabilityの後続DELETE/UPDATEが不一致入力でも動けるため、更新系SQLそれぞれにも同じ集合条件が必要だった。
+
+## 2026-09-07 D1 rate limit
+
+- Miniflare 5 では D1 の `RETURNING` を使った単一文のカウンタ取得が Worker 実行時に `internal_error` になった。UPSERT と SELECT を D1 batch にまとめると、既存の disposable fixture でも動作した。
+- 既存の統合検証は同一送信元で作成操作を多数行うため、初期閾値を低くすると正常系テスト自身を枯渇させる。作成60・回答120・読取240/60秒を採用し、専用fixtureで超過とwindowリセットを分離して確認した。
 - Dioxusの隣接`if`は受理済みと送信途中の表示を同時に描画し得るため、状態表示は一つの排他的な条件分岐にまとめる必要がある。

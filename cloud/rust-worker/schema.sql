@@ -32,3 +32,10 @@ CREATE TABLE answers (
     FOREIGN KEY(event_id, response_id) REFERENCES responses(event_id, id),
     FOREIGN KEY(event_id, candidate_id) REFERENCES candidates(event_id, id)
 );
+CREATE TABLE rate_limits (
+    source_hash TEXT NOT NULL,
+    route TEXT NOT NULL,
+    window_start INTEGER NOT NULL,
+    request_count INTEGER NOT NULL CHECK(request_count >= 1),
+    PRIMARY KEY(source_hash, route, window_start)
+);
