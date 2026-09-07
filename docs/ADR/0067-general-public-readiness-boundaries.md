@@ -26,6 +26,7 @@ Issue #12自体は判断完了として閉じられるが、一般公開は未�
 - [ADR 0071](0071-d1-backup-restore.md): D1 backup/restore
 - [ADR 0072](0072-migration-and-origin-capability.md): 旧SQLite移行とorigin越えcapability
 - [ADR 0073](0073-response-edit-and-account-csrf-boundary.md): 回答編集とaccount/CSRF境界
+- [ADR 0074](0074-retention-and-deletion-policy.md): 保持・削除運用
 
 ## follow-up issues
 
