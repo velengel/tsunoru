@@ -287,6 +287,10 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## レビュー対応の停止
 
+## R068-R069: Codex review for PR #22 first round (2026-09-07)
+
+The first review batch against `4fcbf6c` returned two findings: candidate-set validation did not guard the later delete/update statements, and accepted/pending response states were rendered by overlapping conditionals. Both were necessary because an incomplete edit could mutate a saved response and the UI could report contradictory states. They were fixed together in `b8e9e1e`, verified with `cargo fmt --check`, Worker Rust tests, and the staging npm suite. One grouped follow-up review remains within the two-round limit.
+
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
 - 指摘：自動レビューによる検証コマンド拒否（専用D1への合成データ書き込み後、失敗・割り込み時の削除保証が不足）。
