@@ -293,7 +293,7 @@ The first review batch against `4fcbf6c` returned two findings: candidate-set va
 
 ## R075-R077: Codex review for PR #22 second round (2026-09-07)
 
-The second review batch against `4084ef9` found three issues: successful edits did not exit edit mode, README and glossary contradicted the update contract, and the Story claimed a decided-event boundary absent from the pilot schema. All were necessary. The UI now restores the accepted view, documentation states changed-payload updates return 200, and the decided-event test boundary is explicitly deferred. Fixed in `a4c7b0d`; no third review is requested under ADR 0043.
+The second review batch against `4084ef9` found three issues: successful edits did not exit edit mode, README and glossary contradicted the update contract, and the Story claimed a decided-event boundary absent from the pilot schema. All were necessary. The UI now restores the accepted view, documentation states changed-payload updates return 200, and the decided-event test boundary is explicitly deferred. Fixed in `3e98179`; no third review is requested under ADR 0043.
 
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
