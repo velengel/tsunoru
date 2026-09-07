@@ -53,7 +53,11 @@ Every candidate must be answered exactly once with `available`, `maybe`, or `una
 
 ## Staging deployment
 
-The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The intended Worker and new D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. The D1 ID remains a placeholder until creation is authorized and succeeds.
+The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The deployed Worker and D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. Completion evidence is recorded in `docs/reports/0036-issue-11-staging-completion.md` and report 0028.
+
+The following bootstrap steps were completed for the original staging deployment and are retained as historical reference. Do not repeat them for routine updates. For a normal redeployment, inspect the existing binding, run `npm run deploy:check`, and deploy with `npx wrangler deploy --env staging`. Worker secrets are retained remotely; if a rotation is intentionally approved, use interactive `npx wrangler secret put <NAME> --env staging` and never reconstruct or commit a local secret file. Do not recreate the database or reapply the fresh-only schema.
+
+### Historical bootstrap (one time)
 
 After approval for the new remote resources:
 
@@ -61,8 +65,8 @@ After approval for the new remote resources:
 2. Inspect the target, then apply `npx wrangler d1 execute tsunoru-staging --env staging --remote --file schema.sql` **once**. Never drop/reset existing tables.
 3. Save `{ "STAGING_API_TOKEN": "<new 32-byte random hex value>" }` in ignored `secrets/staging.json`, owner-readable only. Keep the actual code in private local storage or a password manager. Do not put it in command arguments or commits.
 4. Add `GOOGLE_CLIENT_ID` to the staging vars and `ORGANIZER_SESSION_SECRET` (a new random 64-hex value) to ignored `secrets/staging.json` when enabling Google organizer auth.
-5. Run `npm run deploy:check`, then `npx wrangler deploy --env staging --secrets-file secrets/staging.json`. A new Worker accepts its first secret through `--secrets-file`; `secret put` requires the Worker to exist.
-5. Record the deployed version and check health, assets, unauthenticated 401, wrong Origin 403, cookie login, create/read/answer/retry and organizer-only results using synthetic data. Check the same browser journey at 320px and desktop separately.
+6. Run `npm run deploy:check`, then `npx wrangler deploy --env staging --secrets-file secrets/staging.json`. A new Worker accepts its first secret through `--secrets-file`; `secret put` requires the Worker to exist.
+7. Record the deployed version and check health, assets, unauthenticated 401, wrong Origin 403, cookie login, create/read/answer/retry and organizer-only results using synthetic data. Check the same browser journey at 320px and desktop separately.
 
 This pilot is for a few trusted testers with disposable data. Rate limits, retention/deletion policy for continued use, individual revocation, backup/restore and general-public readiness need the decisions in #12. Local tests and dry-run do not establish a deployed app or physical-phone behavior. Current evidence is in [report 0028](../../docs/reports/0028-staging-browser-app.md).
 
