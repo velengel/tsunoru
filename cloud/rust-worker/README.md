@@ -2,7 +2,7 @@
 
 The Dioxus CSR app and Rust Worker share one origin. A tester enters the shared trial code, creates an event, shares its URL, submits availability, and opens the organizer matrix in the browser that created the event. Native Fullstack remains the default root build; `cloud-web` selects this smaller journey.
 
-Use a **new** dedicated D1 database. `schema.sql` is a fresh baseline, not a migration for the native app or earlier experiments. Existing tables intentionally fail schema application. Accounts, response editing, comments, final decisions, browser-to-browser recovery, and existing-data migration are outside this pilot ([#12](https://github.com/velengel/tsunoru/issues/12)).
+Use a **new** dedicated D1 database. `schema.sql` is a fresh baseline, not a migration for the native app or earlier experiments. Existing tables intentionally fail schema application. Accounts, comments, final decisions, browser-to-browser recovery, and existing-data migration are outside this pilot ([#12](https://github.com/velengel/tsunoru/issues/12)). Response editing is supported for an existing capability while the event remains undecided.
 
 ## Build and verify
 

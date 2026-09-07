@@ -519,6 +519,7 @@ fn ResponseEditor(event: Event) -> Element {
                     record.accepted = true;
                     let _ = save_response(&LocalStore, &record);
                     saved.set(Some(record));
+                    editing.set(false);
                 }
                 Err(error) => handle_error(error, access, message),
             }
