@@ -16,7 +16,7 @@ Issue #12。限定stagingで成立した匿名イベント機能を一般公開�
 - [x] 回答編集・失効・account/CSRFの境界を決める（編集はdefer、現行CSRFは維持）
 - [x] D1 migrationとbackup/restoreの扱いを決める
 - [x] origin越えcapabilityと旧SQLiteの扱いを決める
-- [ ] 実装候補を後続Issueへ分割する（Issue番号未作成のため、#12はまだ閉じない）
+- [x] 実装候補を優先度付きの後続Issueへ分割する（#26–#29）
 
 ## concern
 

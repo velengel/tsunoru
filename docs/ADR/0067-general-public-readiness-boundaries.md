@@ -30,6 +30,7 @@ Issue #12自体は判断完了として閉じられるが、一般公開は未�
 
 ## follow-up issues
 
-- rate limitとabuse対策
-- 利用者別の回答・主催者capability失効
-- D1 backup/restoreと保持ポリシー
+- [Issue #26](https://github.com/velengel/tsunoru/issues/26) P0: rate limitとabuse対策
+- [Issue #27](https://github.com/velengel/tsunoru/issues/27) P1: 利用者別の回答・主催者capability失効
+- [Issue #28](https://github.com/velengel/tsunoru/issues/28) P1: 保持・削除ポリシー
+- [Issue #29](https://github.com/velengel/tsunoru/issues/29) P1: D1 backup/restore
