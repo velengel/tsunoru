@@ -6,7 +6,7 @@ Issue #12は、限定stagingの次に必要な公開前判断を一つにまと�
 
 ## decision
 
-一般公開は、rate limit/abuse対策、利用者別失効、D1 backup/restoreを別Issueで実装・検証してから判断し、旧SQLiteの自動移行とorigin越えcapability引き継ぎは行わない。
+一般公開は、rate limit/abuse対策、利用者別失効、D1 backup/restoreを個別ADRに対応する後続Issueで実装・検証してから判断し、旧SQLiteの自動移行とorigin越えcapability引き継ぎは行わない。
 
 ## rejected options
 
@@ -17,7 +17,15 @@ Issue #12は、限定stagingの次に必要な公開前判断を一つにまと�
 
 ## consequences
 
-Issue #12自体は判断完了として閉じられるが、一般公開は未達である。後続Issueでは、rate limitとabuse計測、利用者別失効、D1のバックアップ・復元演習をそれぞれ実装する必要がある。限定stagingの合成データは継続検証に使えるが、productionデータや旧SQLiteは触らない。
+Issue #12自体は判断完了として閉じられるが、一般公開は未達である。後続Issueでは、rate limitとabuse計測、利用者別失効、D1のバックアップ・復元演習をそれぞれ実装する必要がある。限定stagingの合成データは継続検証に使えるが、productionデータや旧SQLiteは触らない。旧SQLiteの利用者はD1へ自動移行されず、必要ならイベントを再作成する。origin移行時は旧originのcapabilityを新originで利用できず、再回答または再発行が必要になる。回答編集は既存capability境界で実装済み、account/CSRF全面移行は匿名導線を保つ別判断とする。
+
+## 分割ADR
+
+- [ADR 0069](0069-rate-limit-and-abuse-controls.md): rate limitと濫用計測
+- [ADR 0070](0070-capability-revocation.md): 利用者別capability失効
+- [ADR 0071](0071-d1-backup-restore.md): D1 backup/restore
+- [ADR 0072](0072-migration-and-origin-capability.md): 旧SQLite移行とorigin越えcapability
+- [ADR 0073](0073-response-edit-and-account-csrf-boundary.md): 回答編集とaccount/CSRF境界
 
 ## follow-up issues
 
