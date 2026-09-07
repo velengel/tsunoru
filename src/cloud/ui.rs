@@ -531,11 +531,10 @@ fn ResponseEditor(event: Event) -> Element {
             EventDetails { event:event.clone() }
             if !loaded() { p { role:"status", "保存した回答を確認しています…" } }
             else if let Some(record)=current {
-                if record.accepted && !editing() { AnswerAccepted {} }
                 if record.accepted && !editing() {
+                    AnswerAccepted {}
                     button { class:"secondary-button", disabled:busy(), onclick:move |_| editing.set(true), "回答を編集する" }
-                }
-                if record.accepted && editing() {
+                } else if record.accepted && editing() {
                     AnswerForm { event:event.clone(), initial:Some(record.answer.clone()), busy:busy(), on_submit:move |answer: Answer| {
                         submit(ResponseRecord { event_id:event.id.clone(), capability:record.capability.clone(), answer, accepted:false });
                     } }

@@ -253,8 +253,25 @@ pub(super) async fn submit_response(
               )
             ON CONFLICT(response_capability_hash) DO NOTHING
         "#).bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.clone().into(),payload_hash.clone().into(),choices.clone().into()])?,
-        db.prepare("DELETE FROM answers WHERE event_id=?1 AND response_id IN (SELECT id FROM responses WHERE event_id=?1 AND response_capability_hash=?2)").bind(&[id.into(),capability_hash.clone().into()])?,
-        db.prepare("UPDATE responses SET respondent_name=?3,payload_hash=?4 WHERE event_id=?1 AND response_capability_hash=?2").bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.into(),payload_hash.clone().into()])?,
+        db.prepare(r#"DELETE FROM answers
+            WHERE event_id=?1
+              AND response_id IN (SELECT id FROM responses WHERE event_id=?1 AND response_capability_hash=?2)
+              AND (SELECT COUNT(*) FROM candidates WHERE event_id=?1)=json_array_length(?3)
+              AND NOT EXISTS(
+                SELECT 1 FROM json_each(?3) AS choice
+                WHERE NOT EXISTS(SELECT 1 FROM candidates
+                    WHERE event_id=?1 AND id=json_extract(choice.value,'$.candidate_id'))
+              )
+        "#).bind(&[id.into(),capability_hash.clone().into(),choices.clone().into()])?,
+        db.prepare(r#"UPDATE responses SET respondent_name=?3,payload_hash=?4
+            WHERE event_id=?1 AND response_capability_hash=?2
+              AND (SELECT COUNT(*) FROM candidates WHERE event_id=?1)=json_array_length(?5)
+              AND NOT EXISTS(
+                SELECT 1 FROM json_each(?5) AS choice
+                WHERE NOT EXISTS(SELECT 1 FROM candidates
+                    WHERE event_id=?1 AND id=json_extract(choice.value,'$.candidate_id'))
+              )
+        "#).bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.into(),payload_hash.clone().into(),choices.clone().into()])?,
         db.prepare(r#"
             INSERT INTO answers(event_id,response_id,candidate_id,availability)
             SELECT r.event_id,r.id,json_extract(choice.value,'$.candidate_id'),json_extract(choice.value,'$.availability')
