@@ -287,6 +287,10 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## レビュー対応の停止
 
+## R065-R067: Codex review for PR #23 first round (2026-09-07)
+
+The first review batch against `156fd1c` returned three findings: the required Story and ADR were missing, and the UI default prompt did not explicitly invoke `$rust-expert`. All were necessary under the repository workflow and skill activation contract. They were fixed together in `b8bca0c`, validated with `validate-skill`, replied to, and resolved; no follow-up review is needed because the fixes were documentation and metadata-only.
+
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
 - 指摘：自動レビューによる検証コマンド拒否（専用D1への合成データ書き込み後、失敗・割り込み時の削除保証が不足）。
