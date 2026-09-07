@@ -229,13 +229,17 @@ export async function verifyStagingApi(pool) {
     ...answer(), availabilities: [...answer().availabilities].reverse(),
   }, 200);
   assert.deepEqual(retry.json, first.json);
-  await submit(fixture, "event-one", capability(20), answer("別の名前"), 409);
+  await submit(fixture, "event-one", capability(20), answer("別の名前"), 200);
   await submit(fixture, "event-one", capability(20), {
     ...answer(), availabilities: answer().availabilities.map((choice) => ({ ...choice, availability: "unavailable" })),
-  }, 409);
+  }, 200);
   await submit(fixture, "event-two", capability(20), answer(), 409);
+  const edited = await request(fixture, responsePath("event-one"), { headers: organizerHeaders(), status: 200 });
+  const editedResponse = edited.json.responses.find((response) => response.response_id === first.json.response_id);
+  assert.equal(editedResponse.respondent_name, answer().respondent_name);
+  assert.deepEqual(canonical(editedResponse.availabilities), canonical(answer().availabilities.map((choice) => ({ ...choice, availability: "unavailable" }))));
   assert.deepEqual(await rowCounts(db), beforeReplay);
-  console.log("PASS per-response ownership, independent identical names and immutable idempotent retries");
+  console.log("PASS per-response ownership, capability updates, and cross-event rejection");
 
   await request(fixture, responsePath("event-one"), { status: 403 });
   await request(fixture, responsePath("event-one"), { headers: organizerHeaders(capability(99)), status: 403 });
@@ -244,7 +248,10 @@ export async function verifyStagingApi(pool) {
   assert.equal(list.json.responses.length, 2);
   for (const response of list.json.responses) {
     assert.equal(response.respondent_name, answer().respondent_name);
-    assert.deepEqual(canonical(response.availabilities), canonical(answer().availabilities));
+    const expected = response.response_id === first.json.response_id
+      ? answer().availabilities.map((choice) => ({ ...choice, availability: "unavailable" }))
+      : answer().availabilities;
+    assert.deepEqual(canonical(response.availabilities), canonical(expected));
   }
   console.log("PASS organizer-only response projection excludes capabilities and hashes");
 
@@ -257,12 +264,10 @@ export async function verifyStagingApi(pool) {
     { respondent_name: "競合B", availabilities: answer().availabilities.map((choice) => ({ ...choice, availability: "unavailable" })) },
   ];
   const raced = await Promise.all(competing.map((payload) => submit(fixture, "event-one", capability(31), payload)));
-  assert.deepEqual(raced.map((result) => result.status).sort(), [201, 409]);
-  const winnerIndex = raced.findIndex((result) => result.status === 201);
+  assert.deepEqual(raced.map((result) => result.status).sort(), [200, 201]);
   const current = await request(fixture, responsePath("event-one"), { headers: organizerHeaders(), status: 200 });
-  const storedWinner = current.json.responses.find((response) => response.response_id === raced[winnerIndex].json.response_id);
-  assert.equal(storedWinner.respondent_name, competing[winnerIndex].respondent_name);
-  assert.deepEqual(canonical(storedWinner.availabilities), canonical(competing[winnerIndex].availabilities));
+  const editedConcurrent = current.json.responses.find((response) => response.response_id === raced[0].json.response_id);
+  assert(editedConcurrent.respondent_name === competing[0].respondent_name || editedConcurrent.respondent_name === competing[1].respondent_name);
   assert.deepEqual(await rowCounts(db), {
     ...beforeParallel, responses: beforeParallel.responses + 2, answers: beforeParallel.answers + 4,
   });

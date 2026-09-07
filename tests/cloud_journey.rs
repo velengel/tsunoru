@@ -18,7 +18,7 @@ fn limited_entry_explains_the_trial_code_without_account_navigation() {
 #[test]
 fn responder_can_choose_each_date_without_exposing_organizer_actions() {
     let html = render(
-        || rsx! { tsunoru::cloud::ui::AnswerForm { event: event(), busy:false, on_submit: |_|{} } },
+        || rsx! { tsunoru::cloud::ui::AnswerForm { event: event(), initial: None, busy:false, on_submit: |_|{} } },
     );
     assert_eq!(html.matches("type=\"radio\"").count(), 6);
     assert!(

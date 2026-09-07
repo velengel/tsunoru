@@ -287,9 +287,13 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## レビュー対応の停止
 
-## R065-R067: Codex review for PR #23 first round (2026-09-07)
+## R068-R069: Codex review for PR #22 first round (2026-09-07)
 
-The first review batch against `156fd1c` returned three findings: the required Story and ADR were missing, and the UI default prompt did not explicitly invoke `$rust-expert`. All were necessary under the repository workflow and skill activation contract. They were fixed together in `b8bca0c`, validated with `validate-skill`, replied to, and resolved; no follow-up review is needed because the fixes were documentation and metadata-only.
+The first review batch against `4fcbf6c` returned two findings: candidate-set validation did not guard the later delete/update statements, and accepted/pending response states were rendered by overlapping conditionals. Both were necessary because an incomplete edit could mutate a saved response and the UI could report contradictory states. They were fixed together in `b8e9e1e`, verified with `cargo fmt --check`, Worker Rust tests, and the staging npm suite. One grouped follow-up review remains within the two-round limit.
+
+## R075-R077: Codex review for PR #22 second round (2026-09-07)
+
+The second review batch against `4084ef9` found three issues: successful edits did not exit edit mode, README and glossary contradicted the update contract, and the Story claimed a decided-event boundary absent from the pilot schema. All were necessary. The UI now restores the accepted view, documentation states changed-payload updates return 200, and the decided-event test boundary is explicitly deferred. Fixed in `3e98179`; no third review is requested under ADR 0043.
 
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
