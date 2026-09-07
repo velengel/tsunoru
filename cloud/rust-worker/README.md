@@ -53,7 +53,7 @@ Every candidate must be answered exactly once with `available`, `maybe`, or `una
 
 ## Staging deployment
 
-The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The intended Worker and new D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. The D1 ID remains a placeholder until creation is authorized and succeeds.
+The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The deployed Worker and D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. Completion evidence is recorded in `docs/reports/0036-issue-11-staging-completion.md` and report 0028.
 
 After approval for the new remote resources:
 
