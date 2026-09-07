@@ -309,7 +309,7 @@ The second-round follow-up found four necessary boundary gaps: response editing 
 
 Second-round follow-up found two necessary consistency gaps: Story 0031 still left the verified real-URL journey unchecked, and routine secret handling depended on an undocumented ignored file. Story 0031 is now aligned with report 0028, and README documents remote secret retention plus explicit interactive rotation in `f2d6d64`. No third review is requested under ADR 0043.
 
-Second-round follow-up found four necessary boundary gaps: response editing was not implemented in this PR, organizer CSRF protection had to remain a gate, deletion policy was independent, and safe-restore criteria needed explicit security conditions. ADRs 0071, 0073, and 0074 plus Story 0036 now record these decisions. Fixed in `f7b1f9a`; no third review is requested under ADR 0043.
+Second-round follow-up found four necessary boundary gaps: response editing was not implemented in this PR, organizer CSRF protection had to remain a gate, deletion policy was independent, and safe-restore criteria needed explicit security conditions. ADRs 0071, 0073, and 0074 plus Story 0036 now record these decisions. Fixed in `17289e6`; no third review is requested under ADR 0043.
 
 ## R031: 実URL書き込み検証の後始末境界（2026-09-06）
 
