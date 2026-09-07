@@ -489,6 +489,7 @@ fn ResponseEditor(event: Event) -> Element {
     let mut storage_failed = use_signal(|| false);
     let mut message = use_signal(String::new);
     let mut busy = use_signal(|| false);
+    let mut editing = use_signal(|| false);
     let id = event.id.clone();
     use_effect(move || {
         match load_response(&LocalStore, &id) {
@@ -530,7 +531,15 @@ fn ResponseEditor(event: Event) -> Element {
             EventDetails { event:event.clone() }
             if !loaded() { p { role:"status", "保存した回答を確認しています…" } }
             else if let Some(record)=current {
-                if record.accepted { AnswerAccepted {} }
+                if record.accepted && !editing() { AnswerAccepted {} }
+                if record.accepted && !editing() {
+                    button { class:"secondary-button", disabled:busy(), onclick:move |_| editing.set(true), "回答を編集する" }
+                }
+                if record.accepted && editing() {
+                    AnswerForm { event:event.clone(), initial:Some(record.answer.clone()), busy:busy(), on_submit:move |answer: Answer| {
+                        submit(ResponseRecord { event_id:event.id.clone(), capability:record.capability.clone(), answer, accepted:false });
+                    } }
+                }
                 else {
                     p { "送信途中の回答があります。保存した内容で再送できます。" }
                     SavedAnswer { event:event.clone(), answer:record.answer.clone() }
@@ -539,7 +548,7 @@ fn ResponseEditor(event: Event) -> Element {
                     }
                 }
             } else if !storage_failed() {
-                AnswerForm { event:event.clone(), busy:busy(), on_submit:move |answer: Answer| {
+                AnswerForm { event:event.clone(), initial:None, busy:busy(), on_submit:move |answer: Answer| {
                     match browser::random_key() {
                         Ok(capability) => submit(ResponseRecord { event_id:event.id.clone(),capability,answer,accepted:false }),
                         Err(error) => message.set(error),
@@ -561,9 +570,28 @@ pub fn EventDetails(event: Event) -> Element {
 }
 
 #[component]
-pub fn AnswerForm(event: Event, busy: bool, on_submit: EventHandler<Answer>) -> Element {
-    let mut name = use_signal(String::new);
-    let mut choices = use_signal(BTreeMap::<String, Availability>::new);
+pub fn AnswerForm(
+    event: Event,
+    initial: Option<Answer>,
+    busy: bool,
+    on_submit: EventHandler<Answer>,
+) -> Element {
+    let initial_name = initial
+        .as_ref()
+        .map(|answer| answer.respondent_name.clone())
+        .unwrap_or_default();
+    let initial_choices: BTreeMap<String, Availability> = initial
+        .as_ref()
+        .map(|answer| {
+            answer
+                .availabilities
+                .iter()
+                .map(|choice| (choice.candidate_id.clone(), choice.availability))
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut name = use_signal(|| initial_name);
+    let mut choices = use_signal(|| initial_choices);
     let mut message = use_signal(String::new);
     let submit_event = event.clone();
     rsx! {

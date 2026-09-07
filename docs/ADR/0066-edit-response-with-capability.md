@@ -15,3 +15,7 @@ Issue #17では、匿名回答者が同じブラウザーから入力ミスや�
 
 ## consequences
 同じブラウザーでは編集できるが、capabilityを失った別端末からの復旧はできない。更新処理は既存行と回答行を同一transactionで置き換えるため、競合時は既存データを保持する。決定後の回答は不変のままになる。
+
+## references
+- [Cloudflare D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/): batch内の失敗が全体をrollbackする原子性を確認した。
+- [SQLx Transaction](https://docs.rs/sqlx/latest/sqlx/struct.Transaction.html): transactionは明示的にcommitし、未commit時はrollbackされる契約を確認した。

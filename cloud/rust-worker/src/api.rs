@@ -252,7 +252,9 @@ pub(super) async fn submit_response(
                     WHERE event_id=?1 AND id=json_extract(choice.value,'$.candidate_id'))
               )
             ON CONFLICT(response_capability_hash) DO NOTHING
-        "#).bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.into(),payload_hash.clone().into(),choices.clone().into()])?,
+        "#).bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.clone().into(),payload_hash.clone().into(),choices.clone().into()])?,
+        db.prepare("DELETE FROM answers WHERE event_id=?1 AND response_id IN (SELECT id FROM responses WHERE event_id=?1 AND response_capability_hash=?2)").bind(&[id.into(),capability_hash.clone().into()])?,
+        db.prepare("UPDATE responses SET respondent_name=?3,payload_hash=?4 WHERE event_id=?1 AND response_capability_hash=?2").bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.into(),payload_hash.clone().into()])?,
         db.prepare(r#"
             INSERT INTO answers(event_id,response_id,candidate_id,availability)
             SELECT r.event_id,r.id,json_extract(choice.value,'$.candidate_id'),json_extract(choice.value,'$.availability')
@@ -264,10 +266,10 @@ pub(super) async fn submit_response(
             .bind(&[capability_hash.into()])?,
         db.prepare("SELECT id,name FROM events WHERE id=?1").bind(&[id.into()])?,
     ]).await?;
-    if result[3].results::<PublicEvent>()?.is_empty() {
+    if result[5].results::<PublicEvent>()?.is_empty() {
         return Err(ApiError::new(404, "event_not_found"));
     }
-    let saved = result[2]
+    let saved = result[4]
         .results::<StoredResponse>()?
         .into_iter()
         .next()
