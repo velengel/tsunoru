@@ -181,7 +181,7 @@ fn CloudHeader() -> Element {
     rsx! {
         header { class: "cloud-header",
             a { class: "wordmark", href: "/", "TSUNORU" }
-            button { class: "help-button", r#type: "button", aria_label: "使い方を開く", onclick: move |_| help_open.set(true), "?" }
+            button { id: "help-button", class: "help-button", r#type: "button", aria_label: "使い方を開く", onclick: move |_| help_open.set(true), "?" }
             button { class: "text-link", r#type: "button", disabled: busy(), onclick: move |_| async move {
                 if busy() { return; }
                 busy.set(true);
@@ -195,9 +195,10 @@ fn CloudHeader() -> Element {
         }
         if !message().is_empty() { p { role: "alert", class: "form-error", "{message}" } }
         if help_open() {
-            div { class: "help-backdrop", role: "presentation", onclick: move |_| help_open.set(false),
-                section { class: "help-dialog", role: "dialog", aria_modal: "true", aria_labelledby: "help-heading", onkeydown: move |event| { if event.key().to_string() == "Escape" { help_open.set(false); } }, onclick: move |event| event.stop_propagation(),
-                    button { id: "help-close", class: "help-close", r#type: "button", aria_label: "使い方を閉じる", onclick: move |_| help_open.set(false), "閉じる" }
+            div { class: "help-backdrop", role: "presentation", onclick: move |_| { help_open.set(false); browser::focus("help-button"); },
+                section { class: "help-dialog", role: "dialog", aria_modal: "true", aria_labelledby: "help-heading", onkeydown: move |event| { if event.key().to_string() == "Escape" { help_open.set(false); browser::focus("help-button"); } }, onclick: move |event| event.stop_propagation(),
+                    div { id: "help-focus-start", class: "help-focus-guard", tabindex: "0", aria_label: "使い方の先頭", onfocus: move |_| browser::focus("help-close") }
+                    button { id: "help-close", class: "help-close", r#type: "button", aria_label: "使い方を閉じる", onclick: move |_| { help_open.set(false); browser::focus("help-button"); }, "閉じる" }
                     h2 { id: "help-heading", "TSUNORUの使い方" }
                     ol {
                         li { strong { "作成" } "：候補日時を入力してイベントを作ります。" }
@@ -206,6 +207,7 @@ fn CloudHeader() -> Element {
                         li { strong { "集計" } "：主催者は「みんなの回答」で候補を比較し、おすすめ表示を参考に決定します。" }
                     }
                     p { class: "field-help", "Escキーまたは閉じるボタンでこの説明を閉じられます。" }
+                    div { id: "help-focus-end", class: "help-focus-guard", tabindex: "0", aria_label: "使い方の末尾", onfocus: move |_| browser::focus("help-close") }
                 }
             }
         }

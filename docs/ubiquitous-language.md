@@ -195,6 +195,13 @@
 - 使われ方：全回答が○、×が0件、×が1件、○が単独最多のいずれかを示す。score、順位、推薦、日程決定には使わない。
 - 参考リンク：[First Instruction: 推薦](../first-instruction.md#推薦)、[ADR 0010](ADR/0010-authorize-and-project-organizer-response-summary.md)
 
+## 候補スコア・おすすめ表示
+
+- 同義語：候補スコア（内部値）、おすすめ。
+- 意味：候補日時ごとの○を2点、△を1点として合計した、主催者が比較するときの判断補助値と表示。
+- 使われ方：主催者向けの回答サマリーと集計表だけに表示し、回答者には表示しない。自動的な日程決定や推薦結果の確定には使わない。
+- 参考リンク：[Story 0034](story/0034-cloud-help-and-candidate-suggestions.md)、[ADR 0065](ADR/0065-candidate-suggestion-score.md)
+
 ## 集計表
 
 - 同義語：従来型集計表。
