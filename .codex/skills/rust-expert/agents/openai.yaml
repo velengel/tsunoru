@@ -1,0 +1,4 @@
+interface:
+  display_name: Rust Expert
+  short_description: Evidence-backed Rust design and review advice
+  default_prompt: Use $rust-expert to review this Rust design or change using current official documentation and primary sources, then give fix/defer/no-change judgments with exact evidence.
