@@ -506,6 +506,12 @@ commit履歴を引き継がなくても、file内容、path、実行bitを含む
 公開用repositoryにはdefault branchがなく、PRのbaseにできるbranchもなかった。
 一方、Codexの実行環境はmainへの直接pushを実行前に拒否したため、利用者が検証済みstaging repositoryから最初の一回だけpushした。
 
+## 2026-09-09 D1 Time Travel 復元演習
+
+staging D1 の Time Travel は、現在 bookmark を取得した直後の一時的な `rate_limits` 行を、取得済み bookmark へ restore することで消去できた。復元後も `events`、`responses`、`answers` の主要テーブルは残り、staging Worker の実 URL は HTTP 200 を返した。
+
+restore は D1 全体を上書きし、in-flight query をキャンセルする操作である。したがって、復元前 bookmark と復元後の健全性確認を同じ手順の必須成果物として扱う必要がある。
+
 GitHubでdefault branchがmainになり、remote HEADがroot commit`351bddffddd873d9b95ef55d7a7cad17b86fe8b8`と一致することを再確認した。
 空repositoryの初期化だけは、通常のfeature branchとPRによる更新とは別の移行境界になる。
 

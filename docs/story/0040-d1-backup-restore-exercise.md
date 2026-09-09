@@ -16,9 +16,9 @@ Issue #29。30日保持と削除運用を追加した staging で、障害や誤
 
 - [x] Cloudflare D1 Time Travel の現行仕様と破壊境界を確認する
 - [x] staging D1 の backend と容量・利用量を確認する
-- [ ] disposable 環境で restore 演習を実行する
-- [ ] RPO/RTO、監視、再適用手順を記録する
+- [x] disposable 環境で restore 演習を実行する
+- [x] RPO/RTO、監視、再適用手順を記録する
 
 ## concern
 
-Time Travel restore は対象 D1 を in-place で上書きし、in-flight query をキャンセルする。実 staging での restore は明示許可と復元前 bookmark の保存が必要であり、今回の準備では実行しない。
+Time Travel restore は対象 D1 を in-place で上書きし、in-flight query をキャンセルする。今回の演習では、復元前 bookmark を保存し、専用の一時 `rate_limits` 行を restore で消去した。production の restore は実行していない。
