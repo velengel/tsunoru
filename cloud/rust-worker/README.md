@@ -56,7 +56,7 @@ Every candidate must be answered exactly once with `available`, `maybe`, or `una
 
 Staging events are retained for 30 days. A daily `0 3 * * *` scheduled Worker job removes expired event graphs atomically; the organizer capability deletion endpoint remains available for immediate cleanup. Existing staging rows without a creation timestamp are assigned the migration time and are not immediately purged.
 
-The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The deployed Worker and D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. Completion evidence is recorded in `docs/reports/0036-issue-11-staging-completion.md` and report 0028.
+The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled. The deployed Worker and D1 are both named `tsunoru-staging`, with canonical app origin `https://staging.tsunoru.velengel.com`. The legacy `https://tsunoru-staging.kounakadora528.workers.dev` hostname remains a migration-only fallback until all shared links and operator runbooks use the Custom Domain and a final HTTP/browser check confirms it can be retired. The canonical and fallback values are recorded in `staging-origin.json`. Completion evidence is recorded in `docs/reports/0036-issue-11-staging-completion.md` and report 0028.
 
 The following bootstrap steps were completed for the original staging deployment and are retained as historical reference. Do not repeat them for routine updates. For a normal redeployment, inspect the existing binding, run `npm run deploy:check`, and deploy with `npx wrangler deploy --env staging`. Worker secrets are retained remotely; if a rotation is intentionally approved, use interactive `npx wrangler secret put <NAME> --env staging` and never reconstruct or commit a local secret file. Do not recreate the database or reapply the fresh-only schema.
 
@@ -74,3 +74,13 @@ After approval for the new remote resources:
 This pilot is for a few trusted testers with disposable data. Rate limits, retention/deletion policy for continued use, individual revocation, backup/restore and general-public readiness need the decisions in #12. Local tests and dry-run do not establish a deployed app or physical-phone behavior. Current evidence is in [report 0028](../../docs/reports/0028-staging-browser-app.md).
 
 References: [Static Assets routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/), [D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch), [Workers secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [Wrangler deploy](https://developers.cloudflare.com/workers/wrangler/commands/deployments/), ADR 0055–0058.
+
+### Real URL smoke verification
+
+The deployed acceptance path can be rerun without printing the staging secret:
+
+```sh
+TSUNORU_STAGING_TOKEN='<64-hex staging token>' npm run verify:staging-smoke
+```
+
+The verifier defaults to `https://staging.tsunoru.velengel.com`; set `TSUNORU_STAGING_URL` to override it. It checks health, session login, event creation and public read, anonymous response and organizer response read, then deletes the generated event. A failed check exits non-zero and cleanup failures are reported. Keep the token in local secret storage or an environment manager; do not put it in shell history, arguments, logs, or files committed to Git.

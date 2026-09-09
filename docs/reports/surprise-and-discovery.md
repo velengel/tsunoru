@@ -735,3 +735,9 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 ## 2026-09-09 Worker responsibility refactor
 
 - API handler 本体を動かさず再 export で resource module 境界を先に作ると、認可・route の変更と handler 移動を分けて検証できる。今回の構造テストはこの境界を固定する。
+
+## 2026-09-09 PR #38-40 review follow-up
+
+- 実 URL smoke の作成要求は、応答が失われてもサーバー側で書き込み済みになり得るため、応答受信前から cleanup 対象として扱う必要があった。
+- 設定 drift 検査は文字列全体の一致ではなく `env.staging` の実効テーブルを切り出さないと、別環境の値やコメントを誤って受理し得る。
+- モジュール分割の構造テストはファイル存在だけでは不十分で、責務を示す実装と通常テストスイートへの登録まで検査する必要があった。

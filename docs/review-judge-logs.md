@@ -287,6 +287,12 @@ PRの指摘について、判断、理由、検証、修正へのリンクを残
 
 ## レビュー対応の停止
 
+## R078-R083: Codex review follow-up for PR #38, #39, #40 (2026-09-09)
+
+旧ヘッドに対する6件の指摘を現行ヘッドへ再評価し、すべて**要対応**と判断した。#38 は作成応答の不確実性と SIGINT/SIGTERM 後始末を `846f90e` で修正し、README と Story の状態も同期した。#39 は `env.staging` の実効設定だけを検査するよう `093fa7d` で修正した。#40 は責務モジュールの実装マーカーを確認し、構造テストを `npm test` に登録する `114731a` を適用した。
+
+各修正は対応コメントへコミットリンク付きで返信し、該当スレッドを解決済みにした。#38 の実 staging URL 実行、#40 の npm test とデプロイ確認は、秘密値または依存関係未注入のため引き続き未検証である。現行ヘッドに対する新規レビュー結果はまだなく、GitHub の reviewDecision は空欄として扱う。
+
 ## R068-R069: Codex review for PR #22 first round (2026-09-07)
 
 The first review batch against `4fcbf6c` returned two findings: candidate-set validation did not guard the later delete/update statements, and accepted/pending response states were rendered by overlapping conditionals. Both were necessary because an incomplete edit could mutate a saved response and the UI could report contradictory states. They were fixed together in `b8e9e1e`, verified with `cargo fmt --check`, Worker Rust tests, and the staging npm suite. One grouped follow-up review remains within the two-round limit.
