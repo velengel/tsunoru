@@ -88,6 +88,13 @@ export class FixturePool {
         mf.dispatchFetch(`${APP_ORIGIN}${path}`, init),
         `${init.method || "GET"} ${path}`,
       ),
+      schedule: async () => this.operation(
+        (async () => {
+          const worker = await mf.getWorker();
+          await worker.scheduled({ cron: "0 3 * * *", scheduledTime: Date.now() });
+        })(),
+        "scheduled cleanup",
+      ),
       close: () => this.#close(mf),
     };
   }

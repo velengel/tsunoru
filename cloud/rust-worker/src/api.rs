@@ -157,9 +157,10 @@ pub(super) async fn create_event(request: &mut Request, env: &Env) -> ApiResult<
     let db = env.d1("DB")?;
     // changes() refers to the immediately preceding statement in this atomic batch.
     // An ID conflict must not append candidates to another organizer's event.
+    let created_at = (Date::now().as_millis() / 1_000).to_string();
     let result = db.batch(vec![
-        db.prepare("INSERT INTO events(id,name,organizer_note,time_zone,organizer_capability_hash,creation_payload_hash) VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(id) DO NOTHING")
-            .bind(&[input.id.clone().into(), input.name.clone().into(), input.organizer_note.clone().map_or(JsValue::NULL, Into::into), input.time_zone.clone().into(), capability_hash.clone().into(), payload_hash.clone().into()])?,
+        db.prepare("INSERT INTO events(id,name,organizer_note,time_zone,organizer_capability_hash,creation_payload_hash,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(id) DO NOTHING")
+            .bind(&[input.id.clone().into(), input.name.clone().into(), input.organizer_note.clone().map_or(JsValue::NULL, Into::into), input.time_zone.clone().into(), capability_hash.clone().into(), payload_hash.clone().into(), created_at.into()])?,
         db.prepare("INSERT INTO candidates(event_id,id,local_date,local_time) SELECT ?1,json_extract(value,'$.id'),json_extract(value,'$.local_date'),json_extract(value,'$.local_time') FROM json_each(?2) WHERE changes() = 1")
             .bind(&[input.id.clone().into(), candidates.into()])?,
         db.prepare("SELECT id,name FROM events WHERE id=?1 AND organizer_capability_hash=?2 AND creation_payload_hash=?3")

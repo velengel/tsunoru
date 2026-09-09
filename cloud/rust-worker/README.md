@@ -54,6 +54,8 @@ Every candidate must be answered exactly once with `available`, `maybe`, or `una
 
 ## Staging deployment
 
+Staging events are retained for 30 days. A daily `0 3 * * *` scheduled Worker job removes expired event graphs atomically; the organizer capability deletion endpoint remains available for immediate cleanup. Existing staging rows without a creation timestamp are assigned the migration time and are not immediately purged.
+
 The selected account is the existing Koji Todo / Voice Workbench account. Only `env.staging` enables workers.dev; preview URLs stay disabled and no custom routes are changed. The deployed Worker and D1 are both named `tsunoru-staging`, with app origin `https://tsunoru-staging.kounakadora528.workers.dev`. Completion evidence is recorded in `docs/reports/0036-issue-11-staging-completion.md` and report 0028.
 
 The following bootstrap steps were completed for the original staging deployment and are retained as historical reference. Do not repeat them for routine updates. For a normal redeployment, inspect the existing binding, run `npm run deploy:check`, and deploy with `npx wrangler deploy --env staging`. Worker secrets are retained remotely; if a rotation is intentionally approved, use interactive `npx wrangler secret put <NAME> --env staging` and never reconstruct or commit a local secret file. Do not recreate the database or reapply the fresh-only schema.

@@ -1,3 +1,5 @@
+#![allow(unused_must_use)]
+
 mod api;
 mod organizer_auth;
 mod session;
@@ -9,6 +11,7 @@ use sha2::{Digest, Sha256};
 use worker::*;
 
 const MAX_BODY_BYTES: usize = 64 * 1024;
+const RETENTION_SECONDS: u64 = 30 * 24 * 60 * 60;
 
 #[derive(Clone, Copy)]
 struct ApiError {
@@ -172,6 +175,31 @@ async fn enforce_rate_limit(request: &Request, env: &Env, operation: &str) -> Ap
         ));
     }
     Ok(())
+}
+
+async fn cleanup_expired(env: &Env, now: u64) -> Result<()> {
+    let cutoff = now.saturating_sub(RETENTION_SECONDS).to_string();
+    let rate_cutoff = now.saturating_sub(24 * 60 * 60).to_string();
+    let db = env.d1("DB")?;
+    db.batch(vec![
+        db.prepare("DELETE FROM answers WHERE event_id IN (SELECT id FROM events WHERE created_at IS NOT NULL AND created_at < ?1)")
+            .bind(&[cutoff.clone().into()])?,
+        db.prepare("DELETE FROM responses WHERE event_id IN (SELECT id FROM events WHERE created_at IS NOT NULL AND created_at < ?1)")
+            .bind(&[cutoff.clone().into()])?,
+        db.prepare("DELETE FROM candidates WHERE event_id IN (SELECT id FROM events WHERE created_at IS NOT NULL AND created_at < ?1)")
+            .bind(&[cutoff.clone().into()])?,
+        db.prepare("DELETE FROM events WHERE created_at IS NOT NULL AND created_at < ?1")
+            .bind(&[cutoff.into()])?,
+        db.prepare("DELETE FROM rate_limits WHERE window_start < ?1")
+            .bind(&[rate_cutoff.into()])?,
+    ]).await?;
+    Ok(())
+}
+
+#[allow(unused_must_use)]
+#[event(scheduled)]
+pub async fn scheduled(_event: ScheduledEvent, env: Env, _ctx: ScheduleContext) -> Result<()> {
+    cleanup_expired(&env, Date::now().as_millis() / 1_000).await
 }
 
 async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
