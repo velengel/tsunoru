@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>TSUNORU — 今回の改善</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b5fff'/%3E%3Cpath d='M16 20h32v8H36v24h-8V28H16z' fill='white'/%3E%3C/svg%3E">
+  <style>
+    :root{--ink:#172033;--muted:#526079;--bg:#f5f7fb;--panel:#fff;--line:#d9e0ec;--blue:#0b5fff;--blue-soft:#e9f0ff;--green:#087443;--green-soft:#e8f7ef;--radius:16px;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.65}
+    main{max-width:980px;margin:auto;padding:clamp(24px,5vw,64px) clamp(16px,4vw,40px)}
+    header{padding:28px;border-radius:var(--radius);background:linear-gradient(135deg,#102b66,#0b5fff);color:#fff;box-shadow:0 12px 30px #163a7822}header p{max-width:62ch;margin:.5rem 0 0;color:#e7efff}h1,h2{line-height:1.25}h1{font-size:clamp(2rem,5vw,3.2rem);margin:0}h2{font-size:1.45rem;margin-top:0}section{margin-top:28px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card,.evidence{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:22px}.card{border-top:5px solid var(--blue)}.card h2{margin-bottom:8px}.tag{display:inline-block;padding:3px 9px;border-radius:999px;background:var(--blue-soft);color:#0647b5;font-size:.85rem;font-weight:700}.evidence{border-left:5px solid var(--green)}.evidence strong{color:var(--green)}dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 18px;margin:0}dt{font-weight:700}dd{margin:0;color:var(--muted)}a{color:#0647b5;text-underline-offset:3px}a:focus-visible{outline:3px solid #ffbf47;outline-offset:3px}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:#eef1f6;padding:.12em .35em;border-radius:5px}.note{padding:16px 18px;background:#fff8df;border:1px solid #e5c86a;border-radius:12px}.small{color:var(--muted);font-size:.94rem}@media(max-width:720px){.grid{grid-template-columns:1fr}header{padding:22px}dl{grid-template-columns:1fr;gap:2px}dd{margin-bottom:10px}}
+    @media print{body{background:#fff}main{padding:0}header{color:#000;background:#fff;border:2px solid #222;box-shadow:none}.card,.evidence{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="tag">2026-09-10 / staging deploy</span>
+    <h1>今回の変更で、何が良くなったか</h1>
+    <p>PR #38〜#40 を順にマージし、Worker・staging 設定・検証手順を同じ運用境界へそろえました。</p>
+  </header>
+
+  <section aria-labelledby="changes"><h2 id="changes">改善点</h2>
+    <div class="grid">
+      <article class="card"><span class="tag">検証</span><h2>実 URL を再確認できる</h2><p>health、セッション、イベント作成、公開読取、匿名回答、主催者読取、削除までを一つの smoke verifier で確認できます。合成 ID と capability を使い、失敗時や割り込み時も cleanup を試みます。</p></article>
+      <article class="card"><span class="tag">運用</span><h2>staging の向き先がぶれない</h2><p>canonical origin を <code>https://staging.tsunoru.velengel.com</code> に固定しました。drift 検査はコメントや別環境の値ではなく、<code>env.staging</code> の実効設定を確認します。</p></article>
+      <article class="card"><span class="tag">保守</span><h2>Worker の責務を追いやすい</h2><p>route、policy、events、responses、cleanup の境界をコードと構造テストで確認します。テストは通常の <code>npm test</code> に入り、分割が戻ったときに検知できます。</p></article>
+    </div>
+  </section>
+
+  <section aria-labelledby="before-after"><h2 id="before-after">変更前と変更後</h2>
+    <div class="evidence"><dl>
+      <dt>再現性</dt><dd>手動の複数操作 → <strong>一つの再実行可能な smoke コマンド</strong></dd>
+      <dt>URL 管理</dt><dd>README・設定・検証の個別更新 → <strong>canonical metadata と drift 検査</strong></dd>
+      <dt>変更影響</dt><dd>大きな Worker 入口を読む → <strong>責務別モジュールと境界テスト</strong></dd>
+      <dt>後始末</dt><dd>応答欠落時に作成済みか不明 → <strong>応答前から cleanup 対象として追跡</strong></dd>
+    </dl></div>
+  </section>
+
+  <section aria-labelledby="proof"><h2 id="proof">今回確認できたこと</h2>
+    <div class="evidence"><p><strong>PASS</strong> <code>npm run deploy:check</code>、Worker build、staging deploy。</p><p><strong>PASS</strong> 配置後 <a href="https://staging.tsunoru.velengel.com/health">staging health endpoint</a> が HTTP 200、<code>{"runtime":"rust-worker","status":"ok"}</code>、<code>no-store</code>、<code>nosniff</code> を返しました。</p><p><strong>UNVERIFIED</strong> staging token を必要とする実データ smoke の全行程。秘密値はこのレポートへ記録していません。</p></div>
+  </section>
+
+  <p class="note"><strong>読むときのポイント：</strong> デプロイ成功は Worker が配置された証拠です。実データ smoke は別の証拠なので、token を安全な秘密ストレージから注入した実行結果が揃って初めて全行程が確認済みになります。</p>
+  <p class="small">根拠: <a href="../../cloud/rust-worker/README.md">Worker README</a>、<a href="../ADR/0081-canonicalize-staging-origin-and-guard-drift.md">ADR 0081</a>、<a href="../ADR/0082-re-runnable-staging-real-url-smoke.md">ADR 0082</a>、<a href="../ADR/0083-separate-worker-responsibilities.md">ADR 0083</a>。</p>
+</main>
+</body>
+</html>
