@@ -1,0 +1,5 @@
+{
+  "canonical": "https://staging.tsunoru.velengel.com",
+  "legacyFallback": "https://tsunoru-staging.kounakadora528.workers.dev",
+  "fallbackStatus": "migration-only"
+}
