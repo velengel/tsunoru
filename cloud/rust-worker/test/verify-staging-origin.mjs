@@ -11,8 +11,10 @@ assert.match(config.canonical, /^https:\/\/staging\.tsunoru\.velengel\.com$/);
 assert.match(config.legacyFallback, /^https:\/\/tsunoru-staging\.kounakadora528\.workers\.dev$/);
 
 const wrangler = await read("wrangler.toml");
-assert.match(wrangler, new RegExp(`APP_ORIGIN = "${config.canonical.replaceAll(".", "\\.")}"`));
-assert.match(wrangler, new RegExp(`pattern = "${new URL(config.canonical).hostname.replaceAll(".", "\\.")}"`));
+const staging = wrangler.slice(wrangler.indexOf("[env.staging]"));
+assert.ok(staging, "wrangler.toml must define env.staging");
+assert.match(staging, new RegExp(`APP_ORIGIN = "${config.canonical.replaceAll(".", "\\.")}"`));
+assert.match(staging, new RegExp(`pattern = "${new URL(config.canonical).hostname.replaceAll(".", "\\.")}"`));
 
 const readme = await read("README.md");
 assert.match(readme, new RegExp("canonical app origin `" + config.canonical.replaceAll(".", "\\.") + "`"));
