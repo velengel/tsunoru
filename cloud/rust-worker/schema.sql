@@ -5,7 +5,8 @@ CREATE TABLE events (
     organizer_note TEXT CHECK(organizer_note IS NULL OR length(organizer_note) <= 500),
     time_zone TEXT NOT NULL CHECK(length(time_zone) BETWEEN 1 AND 64),
     organizer_capability_hash TEXT NOT NULL CHECK(length(organizer_capability_hash) = 64),
-    creation_payload_hash TEXT NOT NULL CHECK(length(creation_payload_hash) = 64)
+    creation_payload_hash TEXT NOT NULL CHECK(length(creation_payload_hash) = 64),
+    created_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE candidates (
     event_id TEXT NOT NULL REFERENCES events(id),

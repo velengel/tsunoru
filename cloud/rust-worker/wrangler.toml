@@ -27,6 +27,9 @@ name = "tsunoru-staging"
 workers_dev = true
 preview_urls = false
 
+[env.staging.triggers]
+crons = ["0 3 * * *"]
+
 [env.staging.vars]
 APP_ORIGIN = "https://tsunoru-staging.kounakadora528.workers.dev"
 # Set GOOGLE_CLIENT_ID in the deployment environment when enabling organizer Google auth.

@@ -106,6 +106,19 @@ export async function verifyStagingApi(pool) {
   }
   console.log("PASS absent or malformed staging configuration fails closed");
 
+  const retention = await pool.create();
+  const retentionDb = retention.db;
+  await createEvent(retention, "retention-old");
+  await submit(retention, "retention-old", capability(59), answer("期限切れ"), 201);
+  await retentionDb.prepare("UPDATE events SET created_at=0 WHERE id='retention-old'").run();
+  await createEvent(retention, "retention-fresh");
+  await retention.schedule();
+  await request(retention, "/api/events/retention-old", { status: 404 });
+  await request(retention, "/api/events/retention-fresh", { status: 200 });
+  assert.equal((await retentionDb.prepare("SELECT COUNT(*) AS count FROM responses WHERE event_id='retention-old'").first()).count, 0);
+  await retention.schedule();
+  await retention.close();
+  console.log("PASS scheduled retention removes expired event graphs, preserves fresh events and is idempotent");
   const fixture = await pool.create();
   const { db } = fixture;
   await createEvent(fixture, "event-one", { origin: APP_ORIGIN, contentType: "application/json; charset=utf-8" });
