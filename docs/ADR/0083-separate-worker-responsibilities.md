@@ -1,4 +1,4 @@
-# ADR 0080: staging Worker の横断処理と API handler を分離する
+# ADR 0083: staging Worker の横断処理と API handler を分離する
 
 ## context
 Worker の入口 module に route、capability 認可の方式選択、rate limit、scheduled cleanup があり、API module にイベントと回答の保存・読取・削除処理が混在している。機能追加時に横断処理と resource 操作の変更範囲が広がり、認可境界のレビューが難しい。

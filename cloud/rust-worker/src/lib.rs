@@ -1,7 +1,12 @@
 #![allow(unused_must_use)]
 
 mod api;
+mod cleanup;
+mod events;
 mod organizer_auth;
+mod policy;
+mod responses;
+mod route;
 mod session;
 
 use futures_util::StreamExt;
@@ -231,40 +236,15 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         .var("GOOGLE_CLIENT_ID")
         .map(|v| !v.to_string().trim().is_empty())
         .unwrap_or(false);
-    let organizer_mutation = matches!(
-        (&method, segments.as_slice()),
-        (Method::Post, ["", "api", "events"])
-            | (Method::Get, ["", "api", "events", _, "responses"])
-            | (Method::Delete, ["", "api", "events", _])
-            | (
-                Method::Delete,
-                ["", "api", "events", _, "responses", _, "capability"]
-            )
-    );
-    if organizer_mutation {
-        if google_enabled {
-            organizer_auth::authorize(&request, &env)?;
-        } else {
-            session::authorize(&request, &env)?;
-        }
-    } else if !google_enabled {
-        session::authorize(&request, &env)?;
-    }
-    let operation = match (&method, segments.as_slice()) {
-        (Method::Post, ["", "api", "events"]) => Some("create"),
-        (Method::Post, ["", "api", "events", _, "responses"]) => Some("response"),
-        (Method::Get, ["", "api", "events", _])
-        | (Method::Get, ["", "api", "events", _, "responses"]) => Some("read"),
-        (Method::Delete, ["", "api", "events", _, "responses", _, "capability"]) => None,
-        _ => None,
-    };
+    policy::authorize(&request, &env, &method, &segments, google_enabled)?;
+    let operation = policy::operation(&method, &segments);
     if let Some(operation) = operation {
         enforce_rate_limit(&request, &env, operation).await?;
     }
     match (method, segments.as_slice()) {
-        (Method::Post, ["", "api", "events"]) => api::create_event(&mut request, &env).await,
+        (Method::Post, ["", "api", "events"]) => events::create_event(&mut request, &env).await,
         (Method::Get, ["", "api", "events", id]) if identifier_valid(id) => {
-            api::get_event(id, &env).await
+            events::get_event(id, &env).await
         }
         (Method::Post, ["", "api", "events", id, "responses"]) if identifier_valid(id) => {
             if google_enabled {
@@ -276,13 +256,13 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
                     return Err(ApiError::new(403, "origin_forbidden"));
                 }
             }
-            api::submit_response(id, &mut request, &env).await
+            responses::submit_response(id, &mut request, &env).await
         }
         (Method::Get, ["", "api", "events", id, "responses"]) if identifier_valid(id) => {
-            api::get_responses(id, &request, &env).await
+            responses::get_responses(id, &request, &env).await
         }
         (Method::Delete, ["", "api", "events", id]) if identifier_valid(id) => {
-            api::delete_event(id, &request, &env).await
+            events::delete_event(id, &request, &env).await
         }
         (
             Method::Delete,
@@ -296,7 +276,7 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
                 "capability",
             ],
         ) if identifier_valid(event_id) && identifier_valid(response_id) => {
-            api::revoke_response(event_id, response_id, &request, &env).await
+            responses::revoke_response(event_id, response_id, &request, &env).await
         }
         _ => Err(ApiError::new(404, "not_found")),
     }

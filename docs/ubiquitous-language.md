@@ -387,4 +387,4 @@
 - **RPO**：障害時に失ってよいデータの時間幅。backup間隔の判断に使う。system synonym: Recovery Point Objective。参照: [公開計画](reports/0021-publication-plan.md)。
 - **RTO**：障害から復旧までの目標時間。復元演習の判定に使う。system synonym: Recovery Time Objective。参照: [公開計画](reports/0021-publication-plan.md)。
 
-- **Worker request policy**：Worker の route 入口で、認可方式・rate limit・Origin などを handler 実行前に判定する横断処理。個々のイベント／回答 handler と分離して扱う。参照: [ADR 0080](ADR/0080-separate-worker-responsibilities.md)。
+- **Worker request policy**：Worker の route 入口で、認可方式・rate limit・Origin などを handler 実行前に判定する横断処理。個々のイベント／回答 handler と分離して扱う。参照: [ADR 0083](ADR/0083-separate-worker-responsibilities.md)。

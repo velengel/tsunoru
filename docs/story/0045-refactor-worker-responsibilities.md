@@ -1,4 +1,4 @@
-# Story 0042: staging Worker の責務を分離する
+# Story 0045: staging Worker の責務を分離する
 
 ## context
 `cloud/rust-worker/src/lib.rs` に route dispatch、認可方式の選択、rate limit、cleanup が集まり、`api.rs` にイベントと回答の handler が同居している。次の変更で境界を誤るコストが高いため、外部契約を保ったまま内部構造を整理する。
