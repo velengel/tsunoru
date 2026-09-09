@@ -1,6 +1,7 @@
 import { randomBytes as cryptoRandomBytes } from "node:crypto";
 
 const DEFAULT_URL = "https://staging.tsunoru.velengel.com";
+let activeCleanup = null;
 
 export async function runSmoke({ baseUrl, token, fetchImpl = fetch, randomBytes = cryptoRandomBytes } = {}) {
   const origin = new URL(baseUrl || DEFAULT_URL).origin;
@@ -25,11 +26,21 @@ export async function runSmoke({ baseUrl, token, fetchImpl = fetch, randomBytes 
       time_zone: "Asia/Tokyo", organizer_capability: organizerCapability,
       candidates: [{ id: "c1", local_date: "2030-01-10", local_time: "10:00" }],
     };
+    // The request may commit before its response is lost; always attempt cleanup.
+    created = true;
+    activeCleanup = async () => {
+      if (!created || deleted) return;
+      try {
+        const result = await call(fetchImpl, origin, `/api/events/${eventId}`, {
+          method: "DELETE", headers: { cookie, "x-organizer-capability": organizerCapability }, origin, expected: 200,
+        });
+        deleted = result.json.deleted === true || result.json.deleted === false;
+      } catch { /* the normal finally path reports cleanup failures */ }
+    };
     const createdResponse = await call(fetchImpl, origin, "/api/events", {
       method: "POST", headers: { cookie }, origin, body: event, expected: 201,
     });
     if (createdResponse.json.id !== eventId) throw new Error("event create returned an unexpected id");
-    created = true;
     const publicEvent = await call(fetchImpl, origin, `/api/events/${eventId}`, { headers: { cookie }, expected: 200 });
     if (publicEvent.json.id !== eventId || publicEvent.json.candidates?.length !== 1) throw new Error("public event projection mismatch");
     await call(fetchImpl, origin, `/api/events/${eventId}/responses`, {
@@ -44,11 +55,12 @@ export async function runSmoke({ baseUrl, token, fetchImpl = fetch, randomBytes 
   } finally {
     if (created) {
       const deletedResponse = await call(fetchImpl, origin, `/api/events/${eventId}`, {
-        method: "DELETE", headers: { cookie, "x-organizer-capability": organizerCapability }, origin, expected: 200,
+        method: "DELETE", headers: { cookie, "x-organizer-capability": organizerCapability }, origin, expected: [200, 404],
       });
-      if (deletedResponse.json.deleted !== true) throw new Error("cleanup did not delete the smoke event");
+      if (deletedResponse.json.deleted !== true && deletedResponse.json.deleted !== false) throw new Error("cleanup returned an invalid result");
       deleted = true;
     }
+    activeCleanup = null;
   }
   return { eventId, deleted, responseCount };
 }
@@ -66,18 +78,28 @@ async function call(fetchImpl, origin, path, { method = "GET", headers = {}, ori
   const text = await response.text();
   let json;
   try { json = JSON.parse(text); } catch { throw new Error(`${method} ${path} returned non-JSON (${response.status})`); }
-  if (response.status !== expected) throw new Error(`${method} ${path} expected ${expected}, received ${response.status}`);
+  const expectedStatuses = Array.isArray(expected) ? expected : [expected];
+  if (!expectedStatuses.includes(response.status)) throw new Error(`${method} ${path} expected ${expectedStatuses.join(" or ")}, received ${response.status}`);
   if (response.headers.get("cache-control") !== "no-store" || response.headers.get("x-content-type-options") !== "nosniff") throw new Error(`${method} ${path} missing required security headers`);
   if (checkHealth && (json.status !== "ok" || json.runtime !== "rust-worker")) throw new Error("health response mismatch");
   return { json, headers: response.headers };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const onSignal = async () => {
+    await activeCleanup?.();
+    process.exitCode = 130;
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   try {
     const result = await runSmoke({ baseUrl: process.env.TSUNORU_STAGING_URL, token: process.env.TSUNORU_STAGING_TOKEN });
     console.log(`PASS staging real-URL smoke event=${result.eventId} cleanup=verified`);
   } catch (error) {
     console.error(`FAIL staging real-URL smoke: ${error.message}`);
     process.exitCode = 1;
+  } finally {
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
   }
 }
