@@ -382,7 +382,7 @@
 - 意味：staging の利用者向け URL と `APP_ORIGIN` に使う唯一の HTTPS origin。
 - 使われ方：現在は `https://staging.tsunoru.velengel.com` を使い、旧 `workers.dev` は移行中 fallback としてだけ扱う。
 - 避けられないシステム上の同義語：canonical staging origin。
-- 参考リンク：[ADR 0080](ADR/0080-canonicalize-staging-origin-and-guard-drift.md)、[staging-origin.json](../cloud/rust-worker/staging-origin.json)
+- 参考リンク：[ADR 0081](ADR/0081-canonicalize-staging-origin-and-guard-drift.md)、[staging-origin.json](../cloud/rust-worker/staging-origin.json)
 # 公開計画で使う運用用語
 
 - **CSR**：画面をブラウザーで描画する構成。限定版を native server function から分離して build するときに使う。system synonym: Client-Side Rendering。参照: [ADR 0055](ADR/0055-serve-a-csr-pilot-with-the-rust-worker.md)。

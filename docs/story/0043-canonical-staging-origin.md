@@ -1,4 +1,4 @@
-# Story 0042: staging origin を一元化して drift を検知する
+# Story 0043: staging origin を一元化して drift を検知する
 
 ## context
 

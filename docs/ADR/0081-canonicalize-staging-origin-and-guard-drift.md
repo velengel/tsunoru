@@ -1,4 +1,4 @@
-# ADR 0080: staging の正規 origin を設定として共有し drift を検知する
+# ADR 0081: staging の正規 origin を設定として共有し drift を検知する
 
 ## context
 
