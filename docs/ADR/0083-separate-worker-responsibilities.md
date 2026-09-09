@@ -12,4 +12,4 @@ route policy と resource 別 handler を module 単位で分離し、capability
 - API 契約を同時に変更する: リファクタの原因切り分けと既存 staging 利用の継続を難しくする。
 
 ## consequences
-module 境界と内部引数が増え、短期的にはファイル数と import が増える。既存の status/error、D1 batch、capability 検証を保つ限り、今後の handler 変更を局所化し、レビューと構造テストを容易にできる。認可 policy 自体の仕様変更はこの ADR の対象外である。
+module 境界と内部引数が増え、短期的にはファイル数と import が増える。今回の resource module は既存 handler の再 export による機械的境界であり、handler 本体の移動は別の変更として安全に進められる。既存の status/error、D1 batch、capability 検証を保つ限り、今後の handler 変更を局所化し、レビューと構造テストを容易にできる。認可 policy 自体の仕様変更はこの ADR の対象外である。

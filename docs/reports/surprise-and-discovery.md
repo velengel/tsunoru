@@ -731,3 +731,7 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 
 - 回答 capability を失効させる操作は、失効対象自身の credential を使えないため、主催者 capability で対象回答だけを止める endpoint として分離する必要があった。公開イベントの閲覧と新しい匿名回答は維持し、失効後の再送・編集だけを拒否する。
 - Dioxusの隣接`if`は受理済みと送信途中の表示を同時に描画し得るため、状態表示は一つの排他的な条件分岐にまとめる必要がある。
+
+## 2026-09-09 Worker responsibility refactor
+
+- API handler 本体を動かさず再 export で resource module 境界を先に作ると、認可・route の変更と handler 移動を分けて検証できる。今回の構造テストはこの境界を固定する。
