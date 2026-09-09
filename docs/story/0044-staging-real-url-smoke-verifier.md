@@ -14,10 +14,10 @@ staging の health、試用セッション、イベント作成・公開読取�
 
 ## to do
 
-- [ ] CLI smoke verifier と安全な設定読込を追加する
-- [ ] RED テストで成功・失敗・cleanup 境界を定義する
-- [ ] 正規 staging URL で実行し、証跡を記録する
-- [ ] Story と README を実装状態へ更新する
+- [x] CLI smoke verifier と安全な設定読込を追加する
+- [x] RED テストで成功・失敗・cleanup 境界を定義する
+- [ ] 正規 staging URL で実行し、証跡を記録する（秘密値未注入のため本セッションでは未確認）
+- [x] Story と README を実装状態へ更新する
 
 ## concern
 
