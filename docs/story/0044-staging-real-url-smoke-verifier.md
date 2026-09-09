@@ -1,4 +1,4 @@
-# Story 0042: staging 実 URL smoke 検証を再実行可能にする
+# Story 0044: staging 実 URL smoke 検証を再実行可能にする
 
 ## context
 

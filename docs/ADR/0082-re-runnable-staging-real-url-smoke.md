@@ -1,4 +1,4 @@
-# ADR 0080: staging 実 URL smoke 検証を専用 CLI に固定する
+# ADR 0082: staging 実 URL smoke 検証を専用 CLI に固定する
 
 ## context
 

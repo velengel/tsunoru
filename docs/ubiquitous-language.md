@@ -387,4 +387,4 @@
 - **RPO**：障害時に失ってよいデータの時間幅。backup間隔の判断に使う。system synonym: Recovery Point Objective。参照: [公開計画](reports/0021-publication-plan.md)。
 - **RTO**：障害から復旧までの目標時間。復元演習の判定に使う。system synonym: Recovery Time Objective。参照: [公開計画](reports/0021-publication-plan.md)。
 
-- **実 URL smoke 検証**：配置済み staging URL に対し、主要 API 導線を短時間で作成から削除まで再実行する検証。system synonym: real-URL smoke verifier。参照: [ADR 0080](ADR/0080-re-runnable-staging-real-url-smoke.md)。
+- **実 URL smoke 検証**：配置済み staging URL に対し、主要 API 導線を短時間で作成から削除まで再実行する検証。system synonym: real-URL smoke verifier。参照: [ADR 0082](ADR/0082-re-runnable-staging-real-url-smoke.md)。
