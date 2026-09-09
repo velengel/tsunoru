@@ -17,7 +17,7 @@ Custom Domain 移行後も README、検証コード、過去の運用証跡に�
 - [x] canonical origin 定数と drift verifier を追加する
 - [x] active docs と検証コマンドを canonical origin に更新する
 - [x] fallback の終了条件と残存箇所を記録する
-- [ ] focused check と既存 worker checks を実行する
+- [x] focused check と既存 worker checks を実行する
 
 ## concern
 
