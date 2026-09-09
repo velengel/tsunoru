@@ -204,6 +204,32 @@ export async function verifyStagingApi(pool) {
   assert.deepEqual(await rowCounts(db), beforeInvalid);
   console.log("PASS invalid dates, times, time zones and DST gaps/folds reject without writes");
 
+  await createEvent(fixture, "revoke-event");
+  await submit(fixture, "revoke-event", capability(60), answer("失効対象"), 201);
+  await request(fixture, "/api/events/revoke-event/responses/unknown/capability", {
+    method: "DELETE", headers: organizerHeaders(capability(99)), status: 403,
+  });
+  const revoked = await request(fixture, "/api/events/revoke-event/responses/unknown/capability", {
+    method: "DELETE", headers: organizerHeaders(), status: 404,
+  });
+  assert.deepEqual(revoked.json, { error: { code: "response_not_found" } });
+  const revokeList = await request(fixture, "/api/events/revoke-event/responses", {
+    headers: organizerHeaders(), status: 200,
+  });
+  const revokeResponseId = revokeList.json.responses[0].response_id;
+  await request(fixture, `/api/events/revoke-event/responses/${revokeResponseId}/capability`, {
+    method: "DELETE", headers: organizerHeaders(capability(99)), status: 403,
+  });
+  await request(fixture, `/api/events/revoke-event/responses/${revokeResponseId}/capability`, {
+    method: "DELETE", headers: organizerHeaders(), status: 200,
+  });
+  await submit(fixture, "revoke-event", capability(60), answer("失効対象"), 403);
+  await submit(fixture, "revoke-event", capability(61), answer("新しい回答"), 201);
+  await request(fixture, `/api/events/revoke-event/responses/${revokeResponseId}/capability`, {
+    method: "DELETE", headers: organizerHeaders(), status: 200,
+  });
+  console.log("PASS organizer-only response capability revocation preserves public reads and new anonymous responses");
+
   const beforeParallelEvents = await rowCounts(db);
   const repeatedCreates = await Promise.all(Array.from({ length: 6 }, () => request(fixture, "/api/events", {
     method: "POST", payload: event("parallel-event"),

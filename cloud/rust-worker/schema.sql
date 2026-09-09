@@ -21,6 +21,7 @@ CREATE TABLE responses (
     response_capability_hash TEXT NOT NULL UNIQUE CHECK(length(response_capability_hash) = 64),
     respondent_name TEXT NOT NULL CHECK(length(respondent_name) BETWEEN 1 AND 100),
     payload_hash TEXT NOT NULL CHECK(length(payload_hash) = 64),
+    revoked_at INTEGER,
     UNIQUE(event_id, id)
 );
 CREATE TABLE answers (

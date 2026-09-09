@@ -208,6 +208,10 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         (Method::Post, ["", "api", "events"])
             | (Method::Get, ["", "api", "events", _, "responses"])
             | (Method::Delete, ["", "api", "events", _])
+            | (
+                Method::Delete,
+                ["", "api", "events", _, "responses", _, "capability"]
+            )
     );
     if organizer_mutation {
         if google_enabled {
@@ -223,6 +227,7 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         (Method::Post, ["", "api", "events", _, "responses"]) => Some("response"),
         (Method::Get, ["", "api", "events", _])
         | (Method::Get, ["", "api", "events", _, "responses"]) => Some("read"),
+        (Method::Delete, ["", "api", "events", _, "responses", _, "capability"]) => None,
         _ => None,
     };
     if let Some(operation) = operation {
@@ -250,6 +255,20 @@ async fn route(mut request: Request, env: Env) -> ApiResult<Response> {
         }
         (Method::Delete, ["", "api", "events", id]) if identifier_valid(id) => {
             api::delete_event(id, &request, &env).await
+        }
+        (
+            Method::Delete,
+            [
+                "",
+                "api",
+                "events",
+                event_id,
+                "responses",
+                response_id,
+                "capability",
+            ],
+        ) if identifier_valid(event_id) && identifier_valid(response_id) => {
+            api::revoke_response(event_id, response_id, &request, &env).await
         }
         _ => Err(ApiError::new(404, "not_found")),
     }
