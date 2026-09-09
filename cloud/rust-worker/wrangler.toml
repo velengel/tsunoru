@@ -24,7 +24,7 @@ APP_ORIGIN = "https://tsunoru-staging.example.test"
 
 [env.staging]
 name = "tsunoru-staging"
-workers_dev = false
+workers_dev = true
 preview_urls = false
 
 [[env.staging.routes]]
