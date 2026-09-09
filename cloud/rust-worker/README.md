@@ -74,3 +74,13 @@ After approval for the new remote resources:
 This pilot is for a few trusted testers with disposable data. Rate limits, retention/deletion policy for continued use, individual revocation, backup/restore and general-public readiness need the decisions in #12. Local tests and dry-run do not establish a deployed app or physical-phone behavior. Current evidence is in [report 0028](../../docs/reports/0028-staging-browser-app.md).
 
 References: [Static Assets routing](https://developers.cloudflare.com/workers/static-assets/routing/worker-script/), [D1 batch](https://developers.cloudflare.com/d1/worker-api/d1-database/#batch), [Workers secrets](https://developers.cloudflare.com/workers/configuration/secrets/), [Wrangler deploy](https://developers.cloudflare.com/workers/wrangler/commands/deployments/), ADR 0055–0058.
+
+### Real URL smoke verification
+
+The deployed acceptance path can be rerun without printing the staging secret:
+
+```sh
+TSUNORU_STAGING_TOKEN='<64-hex staging token>' npm run verify:staging-smoke
+```
+
+The verifier defaults to `https://staging.tsunoru.velengel.com`; set `TSUNORU_STAGING_URL` to override it. It checks health, session login, event creation and public read, anonymous response and organizer response read, then deletes the generated event. A failed check exits non-zero and cleanup failures are reported. Keep the token in local secret storage or an environment manager; do not put it in shell history, arguments, logs, or files committed to Git.

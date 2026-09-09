@@ -732,7 +732,8 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 - 回答 capability を失効させる操作は、失効対象自身の credential を使えないため、主催者 capability で対象回答だけを止める endpoint として分離する必要があった。公開イベントの閲覧と新しい匿名回答は維持し、失効後の再送・編集だけを拒否する。
 - Dioxusの隣接`if`は受理済みと送信途中の表示を同時に描画し得るため、状態表示は一つの排他的な条件分岐にまとめる必要がある。
 
-## 2026-09-09 canonical staging origin
+## 2026-09-09 PR #38-40 review follow-up
 
-- Custom Domain の切替後も、active README は旧 `workers.dev` URL を「deployed app origin」として説明していた。実際の設定が正しくても、運用者が古いリンクを再利用できるため、URL の検索だけでなく active guidance と設定の関係を検査する drift check が必要だった。
-- 過去の検証レポートに残る旧 URL は誤りではなく、その時点の実 endpoint の証跡だった。履歴を一括置換せず、active docs と historical evidence を分離することで、再発防止と証拠の保存を両立できた。
+- 実 URL smoke の作成要求は、応答が失われてもサーバー側で書き込み済みになり得るため、応答受信前から cleanup 対象として扱う必要があった。
+- 設定 drift 検査は文字列全体の一致ではなく `env.staging` の実効テーブルを切り出さないと、別環境の値やコメントを誤って受理し得る。
+- モジュール分割の構造テストはファイル存在だけでは不十分で、責務を示す実装と通常テストスイートへの登録まで検査する必要があった。
