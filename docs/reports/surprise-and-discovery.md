@@ -720,4 +720,8 @@ D1 batchで更新0件でも先行INSERTがcommitされる反例を実測した�
 
 - Miniflare 5 では D1 の `RETURNING` を使った単一文のカウンタ取得が Worker 実行時に `internal_error` になった。UPSERT と SELECT を D1 batch にまとめると、既存の disposable fixture でも動作した。
 - 既存の統合検証は同一送信元で作成操作を多数行うため、初期閾値を低くすると正常系テスト自身を枯渇させる。作成60・回答120・読取240/60秒を採用し、専用fixtureで超過とwindowリセットを分離して確認した。
+
+## 2026-09-09 organizer response revocation
+
+- 回答 capability を失効させる操作は、失効対象自身の credential を使えないため、主催者 capability で対象回答だけを止める endpoint として分離する必要があった。公開イベントの閲覧と新しい匿名回答は維持し、失効後の再送・編集だけを拒否する。
 - Dioxusの隣接`if`は受理済みと送信途中の表示を同時に描画し得るため、状態表示は一つの排他的な条件分岐にまとめる必要がある。

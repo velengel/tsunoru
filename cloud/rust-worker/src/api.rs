@@ -203,6 +203,7 @@ struct StoredResponse {
     id: String,
     event_id: String,
     payload_hash: String,
+    revoked_at: Option<i64>,
 }
 
 pub(super) async fn submit_response(
@@ -255,7 +256,7 @@ pub(super) async fn submit_response(
         "#).bind(&[id.into(),capability_hash.clone().into(),input.respondent_name.clone().into(),payload_hash.clone().into(),choices.clone().into()])?,
         db.prepare(r#"DELETE FROM answers
             WHERE event_id=?1
-              AND response_id IN (SELECT id FROM responses WHERE event_id=?1 AND response_capability_hash=?2)
+              AND response_id IN (SELECT id FROM responses WHERE event_id=?1 AND response_capability_hash=?2 AND revoked_at IS NULL)
               AND (SELECT COUNT(*) FROM candidates WHERE event_id=?1)=json_array_length(?3)
               AND NOT EXISTS(
                 SELECT 1 FROM json_each(?3) AS choice
@@ -264,7 +265,7 @@ pub(super) async fn submit_response(
               )
         "#).bind(&[id.into(),capability_hash.clone().into(),choices.clone().into()])?,
         db.prepare(r#"UPDATE responses SET respondent_name=?3,payload_hash=?4
-            WHERE event_id=?1 AND response_capability_hash=?2
+            WHERE event_id=?1 AND response_capability_hash=?2 AND revoked_at IS NULL
               AND (SELECT COUNT(*) FROM candidates WHERE event_id=?1)=json_array_length(?5)
               AND NOT EXISTS(
                 SELECT 1 FROM json_each(?5) AS choice
@@ -276,10 +277,10 @@ pub(super) async fn submit_response(
             INSERT INTO answers(event_id,response_id,candidate_id,availability)
             SELECT r.event_id,r.id,json_extract(choice.value,'$.candidate_id'),json_extract(choice.value,'$.availability')
             FROM responses r,json_each(?4) AS choice
-            WHERE r.event_id=?1 AND r.response_capability_hash=?2 AND r.payload_hash=?3
+            WHERE r.event_id=?1 AND r.response_capability_hash=?2 AND r.payload_hash=?3 AND r.revoked_at IS NULL
             ON CONFLICT(response_id,candidate_id) DO NOTHING
         "#).bind(&[id.into(),capability_hash.clone().into(),payload_hash.clone().into(),choices.into()])?,
-        db.prepare("SELECT id,event_id,payload_hash FROM responses WHERE response_capability_hash=?1")
+        db.prepare("SELECT id,event_id,payload_hash,revoked_at FROM responses WHERE response_capability_hash=?1")
             .bind(&[capability_hash.into()])?,
         db.prepare("SELECT id,name FROM events WHERE id=?1").bind(&[id.into()])?,
     ]).await?;
@@ -291,6 +292,9 @@ pub(super) async fn submit_response(
         .into_iter()
         .next()
         .ok_or(ApiError::new(400, "candidate_set_mismatch"))?;
+    if saved.revoked_at.is_some() {
+        return Err(ApiError::new(403, "forbidden"));
+    }
     if saved.event_id != id || saved.payload_hash != payload_hash {
         return Err(ApiError::new(409, "response_conflict"));
     }
@@ -303,6 +307,40 @@ pub(super) async fn submit_response(
         if created { 201 } else { 200 },
         &json!({"event_id":id,"response_id":saved.id}),
     )
+}
+
+pub(super) async fn revoke_response(
+    event_id: &str,
+    response_id: &str,
+    request: &Request,
+    env: &Env,
+) -> ApiResult<Response> {
+    let capability = header_capability(request, "x-organizer-capability")?;
+    let capability_hash = hash(&capability);
+    let db = env.d1("DB")?;
+    let authorized = db
+        .prepare("SELECT id,name FROM events WHERE id=?1 AND organizer_capability_hash=?2")
+        .bind(&[event_id.into(), capability_hash.clone().into()])?
+        .first::<PublicEvent>(None)
+        .await?;
+    if authorized.is_none() {
+        return Err(ApiError::new(403, "forbidden"));
+    }
+    let response = db
+        .prepare(
+            "SELECT id,event_id,payload_hash,revoked_at FROM responses WHERE id=?1 AND event_id=?2",
+        )
+        .bind(&[response_id.into(), event_id.into()])?
+        .first::<StoredResponse>(None)
+        .await?;
+    if response.is_none() {
+        return Err(ApiError::new(404, "response_not_found"));
+    }
+    db.prepare("UPDATE responses SET revoked_at=CAST(strftime('%s','now') AS INTEGER) WHERE id=?1 AND event_id=?2 AND revoked_at IS NULL")
+        .bind(&[response_id.into(), event_id.into()])?
+        .run()
+        .await?;
+    json_response(200, &json!({"revoked": true}))
 }
 
 #[derive(Deserialize)]

@@ -45,8 +45,9 @@ JSON bodies are limited to 64 KiB while streaming. IDs use 1–64 ASCII letters,
 | --- | --- | --- |
 | `POST /api/events` | `organizer_capability` in JSON | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}],organizer_capability}`; first create 201 `{id,name}`, identical authorized retry 200, changed/wrong-owner retry 409 |
 | `GET /api/events/:id` | none | `{id,name,time_zone,organizer_note,candidates:[{id,local_date,local_time}]}`; no capabilities or private answers |
-| `POST /api/events/:id/responses` | `x-response-capability` | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, same capability retry/update 200 |
+| `POST /api/events/:id/responses` | `x-response-capability` | `{respondent_name,availabilities:[{candidate_id,availability}]}`; 201 `{event_id,response_id}`, same capability retry/update 200; revoked capability 403 |
 | `GET /api/events/:id/responses` | `x-organizer-capability` | `{responses:[{response_id,respondent_name,availabilities:[{candidate_id,availability}]}]}`; wrong capability 403 |
+| `DELETE /api/events/:id/responses/:response_id/capability` | `x-organizer-capability` | Organizer-only response capability revocation; success 200 `{revoked:true}`, wrong capability 403, unknown response 404 |
 | `DELETE /api/events/:id` | `x-organizer-capability` | Deletes the event, candidates, responses and answers atomically; success 200 `{deleted:true}`, wrong capability 403 |
 
 Every candidate must be answered exactly once with `available`, `maybe`, or `unavailable`. Display names may repeat; they never identify ownership. D1 keeps capability and normalized payload hashes. Authorization, complete candidate sets and writes are checked within one batch. Competing retries cannot mix answers; a statement failure rolls the whole batch back.
